@@ -1,7 +1,6 @@
 import { Alert, Button, StyleSheet, TextInput, View } from "react-native";
 import { useState } from "react";
 import { supabase } from "../../src/components/services/supabase";
-import { router } from "expo-router";
 
 export default function LoginScreen() {
   const [email, setEmail] = useState("");
@@ -52,6 +51,21 @@ const styles = StyleSheet.create({
     borderWidth: 1,
     marginBottom: 12,
     paddingHorizontal: 8,
+  },
+  signupContainer: {
+    marginTop: 16,
+    flexDirection: "row",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  signupText: {
+    fontSize: 14,
+    color: "#666",
+  },
+  signupLink: {
+    fontSize: 14,
+    color: "#007AFF",
+    fontWeight: "600",
   },
 });
 

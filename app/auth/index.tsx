@@ -14,8 +14,8 @@ export default function AuthScreen() {
           </Pressable>
         </Link>
         <Link href="/auth/register" asChild>
-          <Pressable style={[styles.button, styles.registerButton]}>
-            <Text style={[styles.buttonText, styles.registerButtonText]}>Sign Up</Text>
+          <Pressable style={styles.button}>
+            <Text style={styles.buttonText}>Sign Up</Text>
           </Pressable>
         </Link>
       </View>
