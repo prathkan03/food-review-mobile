@@ -1,5 +1,4 @@
 import { View, Text, Button } from "react-native";
-import { useState } from "react";
 import { supabase } from "../../src/components/services/supabase";
 
 export default function ProfileTab() {
