@@ -8,8 +8,9 @@ import {
   StyleSheet,
   ActivityIndicator,
   SafeAreaView,
-  KeyboardAvoidingView,
+  ScrollView,
   Platform,
+  Image,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "../../src/components/services/supabase";
@@ -27,12 +28,21 @@ interface Restaurant {
   priceLevel?: number;
 }
 
+const TRENDING_CUISINES = [
+  { id: "1", name: "Pizza", emoji: "🍕" },
+  { id: "2", name: "Sushi", emoji: "🍣" },
+  { id: "3", name: "Steak", emoji: "🥩" },
+  { id: "4", name: "BBQ", emoji: "🍖" },
+  { id: "5", name: "Salad", emoji: "🥗" },
+];
+
 export default function SearchTab() {
   const [query, setQuery] = useState("");
   const [results, setResults] = useState<Restaurant[]>([]);
   const [loading, setLoading] = useState(false);
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
   const [locationError, setLocationError] = useState<string | null>(null);
+  const [recentSearches, setRecentSearches] = useState<string[]>(["Spicy Ramen", "Le Petit Bistro", "Vegan Burgers"]);
 
   useEffect(() => {
     (async () => {
@@ -163,22 +173,27 @@ export default function SearchTab() {
     return <Text style={styles.priceLevel}>{"$".repeat(level)}</Text>;
   };
 
+  const clearRecentSearch = (searchTerm: string) => {
+    setRecentSearches(prev => prev.filter(s => s !== searchTerm));
+  };
+
   return (
     <SafeAreaView style={styles.container}>
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.container}
-      >
+      <ScrollView showsVerticalScrollIndicator={false}>
+        {/* Header */}
         <View style={styles.header}>
-          <Text style={styles.title}>Find Restaurants</Text>
-          <Text style={styles.subtitle}>Search and review your favorite places</Text>
+          <Text style={styles.title}>Search</Text>
+          <Pressable>
+            <Ionicons name="notifications-outline" size={24} color="#FF6B35" />
+          </Pressable>
         </View>
 
-        <View style={styles.searchContainer}>
+        {/* Search Bar */}
+        <View style={styles.searchSection}>
           <View style={styles.searchBar}>
-            <Ionicons name="search" size={20} color="#666" style={styles.searchIcon} />
+            <Ionicons name="search-outline" size={20} color="#999" />
             <TextInput
-              placeholder="Search for restaurants..."
+              placeholder="Cuisine, dish, or restaurant..."
               value={query}
               onChangeText={setQuery}
               onSubmitEditing={search}
@@ -186,65 +201,105 @@ export default function SearchTab() {
               style={styles.searchInput}
               placeholderTextColor="#999"
             />
-            {query.length > 0 && (
-              <Pressable onPress={() => setQuery("")} style={styles.clearButton}>
-                <Ionicons name="close-circle" size={20} color="#999" />
-              </Pressable>
-            )}
           </View>
-          <Pressable onPress={search} style={styles.searchButton}>
-            <Text style={styles.searchButtonText}>Search</Text>
+          <Pressable style={styles.filterButton} onPress={search}>
+            <Ionicons name="options-outline" size={20} color="#FFF" />
           </Pressable>
         </View>
 
-        {locationError && (
-          <View style={styles.locationError}>
-            <Ionicons name="location-outline" size={16} color="#FF6B6B" />
-            <Text style={styles.locationErrorText}>{locationError}</Text>
+        {/* Recent Searches */}
+        {!loading && results.length === 0 && (
+          <>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>RECENT SEARCHES</Text>
+              <Pressable onPress={() => setRecentSearches([])}>
+                <Text style={styles.clearAllText}>Clear All</Text>
+              </Pressable>
+            </View>
+            <View style={styles.recentSearches}>
+              {recentSearches.map((search, index) => (
+                <View key={index} style={styles.recentSearchChip}>
+                  <Ionicons name="time-outline" size={14} color="#666" />
+                  <Text style={styles.recentSearchText}>{search}</Text>
+                  <Pressable onPress={() => clearRecentSearch(search)}>
+                    <Ionicons name="close" size={14} color="#999" />
+                  </Pressable>
+                </View>
+              ))}
+            </View>
+
+            {/* Trending Cuisines */}
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>TRENDING CUISINES</Text>
+            </View>
+            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.cuisineScroll}>
+              {TRENDING_CUISINES.map((cuisine) => (
+                <Pressable key={cuisine.id} style={styles.cuisineCard} onPress={() => {
+                  setQuery(cuisine.name);
+                  search();
+                }}>
+                  <View style={styles.cuisineImage}>
+                    <Text style={styles.cuisineEmoji}>{cuisine.emoji}</Text>
+                  </View>
+                  <Text style={styles.cuisineName}>{cuisine.name}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+
+            {/* Trending Restaurants */}
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>Trending Restaurants</Text>
+              <Pressable>
+                <Text style={styles.seeAllText}>See All</Text>
+              </Pressable>
+            </View>
+          </>
+        )}
+
+        {/* Loading State */}
+        {loading && (
+          <View style={styles.loadingContainer}>
+            <ActivityIndicator size="large" color="#FF6B35" />
+            <Text style={styles.loadingText}>Searching restaurants...</Text>
           </View>
         )}
 
-        {loading ? (
-          <View style={styles.loadingContainer}>
-            <ActivityIndicator size="large" color="#007AFF" />
-            <Text style={styles.loadingText}>Searching restaurants...</Text>
-          </View>
-        ) : (
-          <FlatList
-            data={results}
-            keyExtractor={(item) => item.providerId}
-            contentContainerStyle={styles.listContainer}
-            showsVerticalScrollIndicator={false}
-            ListEmptyComponent={
-              query.length > 0 && !loading ? (
-                <View style={styles.emptyContainer}>
-                  <Ionicons name="restaurant-outline" size={48} color="#CCC" />
-                  <Text style={styles.emptyText}>No restaurants found</Text>
-                  <Text style={styles.emptySubtext}>Try a different search term</Text>
-                </View>
-              ) : null
-            }
-            renderItem={({ item }) => (
+        {/* Search Results */}
+        {!loading && results.length > 0 && (
+          <View style={styles.resultsContainer}>
+            <Text style={styles.resultsTitle}>Search Results</Text>
+            {results.map((item) => (
               <Pressable
+                key={item.providerId}
                 style={styles.restaurantCard}
                 onPress={() => handleSelectRestaurant(item)}
               >
+                <View style={styles.restaurantImagePlaceholder}>
+                  <Ionicons name="restaurant" size={32} color="#FF6B35" />
+                </View>
                 <View style={styles.restaurantInfo}>
                   <Text style={styles.restaurantName}>{item.name}</Text>
-                  <Text style={styles.restaurantAddress} numberOfLines={2}>
+                  <Text style={styles.restaurantAddress} numberOfLines={1}>
                     {item.address}
                   </Text>
                   <View style={styles.restaurantMeta}>
-                    {renderRating(item.rating)}
-                    {renderPriceLevel(item.priceLevel)}
+                    {item.rating && (
+                      <View style={styles.ratingBadge}>
+                        <Ionicons name="star" size={12} color="#FFB800" />
+                        <Text style={styles.ratingText}>{item.rating.toFixed(1)}</Text>
+                      </View>
+                    )}
+                    {item.priceLevel && (
+                      <Text style={styles.priceLevel}>{"$".repeat(item.priceLevel)}</Text>
+                    )}
                   </View>
                 </View>
                 <Ionicons name="chevron-forward" size={20} color="#CCC" />
               </Pressable>
-            )}
-          />
+            ))}
+          </View>
         )}
-      </KeyboardAvoidingView>
+      </ScrollView>
     </SafeAreaView>
   );
 }
@@ -252,80 +307,119 @@ export default function SearchTab() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F8F9FA",
+    backgroundColor: "#FFF",
   },
   header: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
     paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 10,
-    backgroundColor: "#FFF",
-    borderBottomWidth: 1,
-    borderBottomColor: "#E5E5E7",
+    paddingTop: 16,
+    paddingBottom: 16,
   },
   title: {
-    fontSize: 28,
+    fontSize: 24,
     fontWeight: "700",
     color: "#1A1A1A",
-    marginBottom: 4,
   },
-  subtitle: {
-    fontSize: 14,
-    color: "#666",
-  },
-  searchContainer: {
+  searchSection: {
+    flexDirection: "row",
     paddingHorizontal: 20,
-    paddingVertical: 10,
-    gap: 10,
+    paddingVertical: 12,
+    gap: 12,
   },
   searchBar: {
+    flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#FFF",
+    backgroundColor: "#F5F5F5",
     borderRadius: 12,
-    paddingHorizontal: 12,
-    height: 48,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
-  },
-  searchButton: {
-    backgroundColor: "#007AFF",
-    paddingVertical: 14,
-    borderRadius: 12,
-    alignItems: "center",
-  },
-  searchButtonText: {
-    color: "#FFF",
-    fontSize: 16,
-    fontWeight: "600",
-  },
-  searchIcon: {
-    marginRight: 8,
+    paddingHorizontal: 16,
+    height: 50,
+    gap: 8,
   },
   searchInput: {
     flex: 1,
-    fontSize: 16,
+    fontSize: 15,
     color: "#1A1A1A",
   },
-  clearButton: {
-    padding: 4,
+  filterButton: {
+    width: 50,
+    height: 50,
+    backgroundColor: "#FF6B35",
+    borderRadius: 12,
+    justifyContent: "center",
+    alignItems: "center",
   },
-  locationError: {
+  sectionHeader: {
     flexDirection: "row",
+    justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 20,
-    paddingVertical: 8,
-    backgroundColor: "#FFF5F5",
+    paddingTop: 24,
+    paddingBottom: 12,
   },
-  locationErrorText: {
+  sectionTitle: {
     fontSize: 12,
-    color: "#FF6B6B",
-    marginLeft: 6,
+    fontWeight: "700",
+    color: "#999",
+    letterSpacing: 0.5,
+  },
+  clearAllText: {
+    fontSize: 14,
+    color: "#FF6B35",
+    fontWeight: "600",
+  },
+  seeAllText: {
+    fontSize: 14,
+    color: "#FF6B35",
+    fontWeight: "600",
+  },
+  recentSearches: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+    paddingHorizontal: 20,
+    gap: 8,
+  },
+  recentSearchChip: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F5F5F5",
+    borderRadius: 20,
+    paddingHorizontal: 12,
+    paddingVertical: 8,
+    gap: 6,
+  },
+  recentSearchText: {
+    fontSize: 14,
+    color: "#333",
+  },
+  cuisineScroll: {
+    paddingLeft: 20,
+  },
+  cuisineCard: {
+    alignItems: "center",
+    marginRight: 16,
+  },
+  cuisineImage: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "#F5F5F5",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 8,
+  },
+  cuisineEmoji: {
+    fontSize: 32,
+  },
+  cuisineName: {
+    fontSize: 13,
+    color: "#333",
+    fontWeight: "500",
   },
   loadingContainer: {
-    flex: 1,
+    paddingVertical: 60,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -334,26 +428,37 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#666",
   },
-  listContainer: {
+  resultsContainer: {
     paddingHorizontal: 20,
-    paddingBottom: 20,
+    paddingTop: 16,
+  },
+  resultsTitle: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#1A1A1A",
+    marginBottom: 16,
   },
   restaurantCard: {
     flexDirection: "row",
     alignItems: "center",
     backgroundColor: "#FFF",
     borderRadius: 12,
-    padding: 16,
-    marginVertical: 6,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    padding: 12,
+    marginBottom: 12,
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+  },
+  restaurantImagePlaceholder: {
+    width: 60,
+    height: 60,
+    borderRadius: 8,
+    backgroundColor: "#FFF5F0",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
   },
   restaurantInfo: {
     flex: 1,
-    marginRight: 12,
   },
   restaurantName: {
     fontSize: 16,
@@ -362,15 +467,23 @@ const styles = StyleSheet.create({
     marginBottom: 4,
   },
   restaurantAddress: {
-    fontSize: 14,
-    color: "#666",
-    marginBottom: 8,
-    lineHeight: 18,
+    fontSize: 13,
+    color: "#999",
+    marginBottom: 6,
   },
   restaurantMeta: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 12,
+    gap: 8,
+  },
+  ratingBadge: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFF9E6",
+    paddingHorizontal: 6,
+    paddingVertical: 2,
+    borderRadius: 4,
+    gap: 4,
   },
   ratingContainer: {
     flexDirection: "row",
@@ -378,29 +491,13 @@ const styles = StyleSheet.create({
     gap: 4,
   },
   ratingText: {
-    fontSize: 13,
-    color: "#666",
-    fontWeight: "500",
+    fontSize: 12,
+    color: "#333",
+    fontWeight: "600",
   },
   priceLevel: {
     fontSize: 13,
-    color: "#4CAF50",
-    fontWeight: "600",
-  },
-  emptyContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 60,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: "#666",
-    marginTop: 12,
-    fontWeight: "500",
-  },
-  emptySubtext: {
-    fontSize: 14,
     color: "#999",
-    marginTop: 4,
+    fontWeight: "600",
   },
 });

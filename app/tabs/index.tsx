@@ -9,6 +9,7 @@ import {
   SafeAreaView,
   RefreshControl,
   Image,
+  ScrollView,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { supabase } from "../../src/components/services/supabase";
@@ -28,6 +29,14 @@ interface Review {
   items?: string[];
   createdAt: string;
 }
+
+const STORY_USERS = [
+  { id: '1', name: 'You', avatar: '', isYou: true },
+  { id: '2', name: 'Sarah J.', avatar: 'https://i.pravatar.cc/150?img=1' },
+  { id: '3', name: 'Mark T.', avatar: 'https://i.pravatar.cc/150?img=3' },
+  { id: '4', name: 'Anna L.', avatar: 'https://i.pravatar.cc/150?img=5' },
+  { id: '5', name: 'Emily R.', avatar: 'https://i.pravatar.cc/150?img=9' },
+];
 
 export default function HomeTab() {
   const [reviews, setReviews] = useState<Review[]>([]);
@@ -76,20 +85,6 @@ export default function HomeTab() {
     });
   };
 
-  const renderRating = (rating: number) => {
-    return (
-      <View style={styles.ratingContainer}>
-        {[...Array(5)].map((_, i) => (
-          <Ionicons
-            key={i}
-            name={i < rating ? "star" : "star-outline"}
-            size={16}
-            color="#FFB800"
-          />
-        ))}
-      </View>
-    );
-  };
 
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
@@ -105,14 +100,27 @@ export default function HomeTab() {
 
   return (
     <SafeAreaView style={styles.container}>
+      {/* Header */}
       <View style={styles.header}>
-        <Text style={styles.title}>Feed</Text>
-        <Text style={styles.subtitle}>Recent reviews from friends</Text>
+        <View style={styles.headerLeft}>
+          <View style={styles.logo}>
+            <Ionicons name="restaurant" size={20} color="#FFF" />
+          </View>
+          <Text style={styles.title}>Gourmet</Text>
+        </View>
+        <View style={styles.headerRight}>
+          <Pressable style={styles.iconButton}>
+            <Ionicons name="search-outline" size={24} color="#FF6B35" />
+          </Pressable>
+          <Pressable style={styles.iconButton}>
+            <Ionicons name="notifications-outline" size={24} color="#FF6B35" />
+          </Pressable>
+        </View>
       </View>
 
       {loading ? (
         <View style={styles.loadingContainer}>
-          <ActivityIndicator size="large" color="#007AFF" />
+          <ActivityIndicator size="large" color="#FF6B35" />
           <Text style={styles.loadingText}>Loading feed...</Text>
         </View>
       ) : (
@@ -122,11 +130,32 @@ export default function HomeTab() {
           contentContainerStyle={styles.listContainer}
           showsVerticalScrollIndicator={false}
           refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} />
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FF6B35" />
+          }
+          ListHeaderComponent={
+            <View>
+              {/* Stories */}
+              <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.storiesContainer}>
+                {STORY_USERS.map((user) => (
+                  <Pressable key={user.id} style={styles.storyItem}>
+                    {user.isYou ? (
+                      <View style={styles.addStoryCircle}>
+                        <Ionicons name="add" size={24} color="#FF6B35" />
+                      </View>
+                    ) : (
+                      <View style={styles.storyCircle}>
+                        <Image source={{ uri: user.avatar }} style={styles.storyAvatar} />
+                      </View>
+                    )}
+                    <Text style={styles.storyName}>{user.name}</Text>
+                  </Pressable>
+                ))}
+              </ScrollView>
+            </View>
           }
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
-              <Ionicons name="people-outline" size={48} color="#CCC" />
+              <Ionicons name="restaurant-outline" size={48} color="#CCC" />
               <Text style={styles.emptyText}>No reviews yet</Text>
               <Text style={styles.emptySubtext}>Follow friends to see their reviews</Text>
             </View>
@@ -136,6 +165,7 @@ export default function HomeTab() {
               style={styles.reviewCard}
               onPress={() => handleReviewPress(item)}
             >
+              {/* User Header */}
               <View style={styles.reviewHeader}>
                 <View style={styles.userInfo}>
                   {item.userAvatar ? (
@@ -150,52 +180,78 @@ export default function HomeTab() {
                     <Text style={styles.reviewDate}>{formatDate(item.createdAt)}</Text>
                   </View>
                 </View>
+                <Pressable>
+                  <Ionicons name="ellipsis-horizontal" size={20} color="#999" />
+                </Pressable>
               </View>
 
-              <View style={styles.restaurantInfo}>
-                <Text style={styles.restaurantName}>{item.restaurantName}</Text>
+              {/* Restaurant Name */}
+              <Text style={styles.restaurantName}>{item.restaurantName}</Text>
+              <View style={styles.locationRow}>
+                <Ionicons name="location-outline" size={14} color="#999" />
                 <Text style={styles.restaurantAddress} numberOfLines={1}>
                   {item.restaurantAddress}
                 </Text>
               </View>
 
-              {renderRating(item.rating)}
+              {/* Food Image */}
+              {item.photoUrls && item.photoUrls.length > 0 ? (
+                <View style={styles.imageContainer}>
+                  <Image
+                    source={{ uri: item.photoUrls[0] }}
+                    style={styles.foodImage}
+                    resizeMode="cover"
+                  />
+                  <View style={styles.ratingBadge}>
+                    <Ionicons name="star" size={14} color="#FFF" />
+                    <Text style={styles.ratingBadgeText}>{item.rating.toFixed(1)}</Text>
+                  </View>
+                </View>
+              ) : (
+                <View style={styles.imagePlaceholder}>
+                  <Ionicons name="image-outline" size={48} color="#CCC" />
+                </View>
+              )}
 
+              {/* Food Items Tags */}
+              {item.items && item.items.length > 0 && (
+                <View style={styles.tagsRow}>
+                  {item.items.slice(0, 2).map((foodItem, index) => (
+                    <View key={index} style={styles.tag}>
+                      <Text style={styles.tagText}>{foodItem}</Text>
+                      <Text style={styles.tagRating}>{item.rating.toFixed(1)}</Text>
+                    </View>
+                  ))}
+                </View>
+              )}
+
+              {/* Review Text */}
               {item.text && (
                 <Text style={styles.reviewText} numberOfLines={3}>
+                  <Text style={styles.reviewAuthor}>{item.userName.split(' ')[0]}: </Text>
                   {item.text}
                 </Text>
               )}
 
-              {item.items && item.items.length > 0 && (
-                <View style={styles.itemsContainer}>
-                  <Text style={styles.itemsLabel}>Reviewed items:</Text>
-                  <View style={styles.itemsList}>
-                    {item.items.slice(0, 3).map((foodItem, index) => (
-                      <View key={index} style={styles.itemChip}>
-                        <Text style={styles.itemText}>{foodItem}</Text>
-                      </View>
-                    ))}
-                    {item.items.length > 3 && (
-                      <Text style={styles.moreItems}>+{item.items.length - 3} more</Text>
-                    )}
-                  </View>
+              {/* Action Bar */}
+              <View style={styles.actionBar}>
+                <View style={styles.actionLeft}>
+                  <Pressable style={styles.actionButton}>
+                    <Ionicons name="heart-outline" size={20} color="#FF6B35" />
+                    <Text style={styles.actionText}>84</Text>
+                  </Pressable>
+                  <Pressable style={styles.actionButton}>
+                    <Ionicons name="chatbubble-outline" size={20} color="#666" />
+                    <Text style={styles.actionText}>34</Text>
+                  </Pressable>
+                  <Pressable style={styles.actionButton}>
+                    <Ionicons name="share-social-outline" size={20} color="#666" />
+                  </Pressable>
                 </View>
-              )}
-
-              {item.photoUrls && item.photoUrls.length > 0 && (
-                <View style={styles.photoContainer}>
-                  <Image
-                    source={{ uri: item.photoUrls[0] }}
-                    style={styles.reviewPhoto}
-                  />
-                  {item.photoUrls.length > 1 && (
-                    <View style={styles.morePhotos}>
-                      <Text style={styles.morePhotosText}>+{item.photoUrls.length - 1}</Text>
-                    </View>
-                  )}
-                </View>
-              )}
+                <Pressable>
+                  <Ionicons name="bookmark-outline" size={20} color="#FF6B35" />
+                </Pressable>
+              </View>
             </Pressable>
           )}
         />
@@ -207,25 +263,76 @@ export default function HomeTab() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F8F9FA",
+    backgroundColor: "#FFF",
   },
   header: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 10,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 12,
     backgroundColor: "#FFF",
-    borderBottomWidth: 1,
-    borderBottomColor: "#E5E5E7",
+  },
+  headerLeft: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  logo: {
+    width: 32,
+    height: 32,
+    borderRadius: 8,
+    backgroundColor: "#FF6B35",
+    justifyContent: "center",
+    alignItems: "center",
   },
   title: {
-    fontSize: 28,
+    fontSize: 20,
     fontWeight: "700",
     color: "#1A1A1A",
-    marginBottom: 4,
   },
-  subtitle: {
-    fontSize: 14,
-    color: "#666",
+  headerRight: {
+    flexDirection: "row",
+    gap: 12,
+  },
+  iconButton: {
+    padding: 4,
+  },
+  storiesContainer: {
+    paddingVertical: 16,
+    paddingLeft: 16,
+  },
+  storyItem: {
+    alignItems: "center",
+    marginRight: 16,
+  },
+  storyCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    padding: 3,
+    borderWidth: 2,
+    borderColor: "#FF6B35",
+    marginBottom: 6,
+  },
+  addStoryCircle: {
+    width: 64,
+    height: 64,
+    borderRadius: 32,
+    backgroundColor: "#F5F5F5",
+    justifyContent: "center",
+    alignItems: "center",
+    marginBottom: 6,
+  },
+  storyAvatar: {
+    width: "100%",
+    height: "100%",
+    borderRadius: 28,
+  },
+  storyName: {
+    fontSize: 12,
+    color: "#333",
   },
   loadingContainer: {
     flex: 1,
@@ -235,134 +342,171 @@ const styles = StyleSheet.create({
   loadingText: {
     marginTop: 12,
     fontSize: 14,
-    color: "#666",
+    color: "#999",
   },
   listContainer: {
-    paddingVertical: 12,
+    paddingBottom: 20,
   },
   reviewCard: {
     backgroundColor: "#FFF",
     marginHorizontal: 16,
-    marginVertical: 8,
-    borderRadius: 12,
-    padding: 16,
+    marginBottom: 24,
+    borderRadius: 16,
+    overflow: "hidden",
     shadowColor: "#000",
     shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 2,
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   reviewHeader: {
-    marginBottom: 12,
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    padding: 16,
+    paddingBottom: 12,
   },
   userInfo: {
     flexDirection: "row",
     alignItems: "center",
   },
   avatar: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    marginRight: 12,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    marginRight: 10,
   },
   avatarPlaceholder: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
+    width: 36,
+    height: 36,
+    borderRadius: 18,
     backgroundColor: "#F0F0F0",
     alignItems: "center",
     justifyContent: "center",
-    marginRight: 12,
+    marginRight: 10,
   },
   userDetails: {
     flex: 1,
   },
   userName: {
-    fontSize: 16,
+    fontSize: 14,
     fontWeight: "600",
     color: "#1A1A1A",
   },
   reviewDate: {
-    fontSize: 12,
+    fontSize: 11,
     color: "#999",
     marginTop: 2,
   },
-  restaurantInfo: {
-    marginBottom: 8,
-  },
   restaurantName: {
-    fontSize: 18,
-    fontWeight: "600",
-    color: "#1A1A1A",
+    fontSize: 20,
+    fontWeight: "700",
+    color: "#FF6B35",
+    paddingHorizontal: 16,
     marginBottom: 4,
   },
-  restaurantAddress: {
-    fontSize: 14,
-    color: "#666",
-  },
-  ratingContainer: {
+  locationRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 2,
+    paddingHorizontal: 16,
     marginBottom: 12,
+    gap: 4,
   },
-  reviewText: {
-    fontSize: 14,
-    color: "#333",
-    lineHeight: 20,
-    marginBottom: 12,
+  restaurantAddress: {
+    fontSize: 13,
+    color: "#999",
+    flex: 1,
   },
-  itemsContainer: {
-    marginBottom: 12,
+  imageContainer: {
+    position: "relative",
+    width: "100%",
+    height: 280,
   },
-  itemsLabel: {
-    fontSize: 12,
-    color: "#666",
-    marginBottom: 8,
-    fontWeight: "500",
+  foodImage: {
+    width: "100%",
+    height: "100%",
   },
-  itemsList: {
+  imagePlaceholder: {
+    width: "100%",
+    height: 280,
+    backgroundColor: "#F5F5F5",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  ratingBadge: {
+    position: "absolute",
+    top: 12,
+    right: 12,
+    backgroundColor: "#FF6B35",
     flexDirection: "row",
-    flexWrap: "wrap",
+    alignItems: "center",
+    paddingHorizontal: 10,
+    paddingVertical: 6,
+    borderRadius: 20,
+    gap: 4,
+  },
+  ratingBadgeText: {
+    color: "#FFF",
+    fontSize: 14,
+    fontWeight: "700",
+  },
+  tagsRow: {
+    flexDirection: "row",
+    paddingHorizontal: 16,
+    paddingTop: 12,
     gap: 8,
   },
-  itemChip: {
-    backgroundColor: "#F0F0F0",
+  tag: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F5F5F5",
     paddingHorizontal: 12,
     paddingVertical: 6,
     borderRadius: 16,
+    gap: 6,
   },
-  itemText: {
+  tagText: {
     fontSize: 13,
     color: "#333",
+    fontWeight: "500",
   },
-  moreItems: {
-    fontSize: 13,
-    color: "#007AFF",
-    alignSelf: "center",
-  },
-  photoContainer: {
-    position: "relative",
-  },
-  reviewPhoto: {
-    width: "100%",
-    height: 200,
-    borderRadius: 8,
-    marginTop: 8,
-  },
-  morePhotos: {
-    position: "absolute",
-    bottom: 8,
-    right: 8,
-    backgroundColor: "rgba(0, 0, 0, 0.6)",
-    paddingHorizontal: 8,
-    paddingVertical: 4,
-    borderRadius: 4,
-  },
-  morePhotosText: {
-    color: "#FFF",
+  tagRating: {
     fontSize: 12,
+    color: "#FF6B35",
     fontWeight: "600",
+  },
+  reviewText: {
+    fontSize: 14,
+    color: "#666",
+    lineHeight: 20,
+    paddingHorizontal: 16,
+    paddingTop: 12,
+  },
+  reviewAuthor: {
+    fontWeight: "600",
+    color: "#1A1A1A",
+  },
+  actionBar: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingTop: 12,
+    paddingBottom: 16,
+  },
+  actionLeft: {
+    flexDirection: "row",
+    gap: 16,
+  },
+  actionButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 4,
+  },
+  actionText: {
+    fontSize: 13,
+    color: "#666",
+    fontWeight: "500",
   },
   emptyContainer: {
     alignItems: "center",
