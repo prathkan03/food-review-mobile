@@ -11,7 +11,7 @@ export default function SearchRestaurantScreen() {
         const token = data.session!.access_token;
 
         const res = await fetch(
-            `http://localhost:8080/restaurants/search?q=${encodeURIComponent(query)}&lat=40.0&lng=-83.0`,
+            `http://localhost:8080/restaurants/search?query=${encodeURIComponent(query)}&lat=40.0&lng=-83.0`,
             {
                 headers: {
                     Authorization: `Bearer ${token}`,
