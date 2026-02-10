@@ -36,6 +36,14 @@ export default function SearchTab() {
 
   useEffect(() => {
     (async () => {
+      // Check if running on web
+      if (Platform.OS === 'web') {
+        console.log("Running on web, using default location");
+        setLocation({ lat: 39.9612, lng: -82.9988 });
+        setLocationError("Using default location (web browser)");
+        return;
+      }
+
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
         setLocationError("Permission to access location was denied");
@@ -53,30 +61,73 @@ export default function SearchTab() {
   }, []);
 
   const search = async () => {
-    if (!query.trim() || !location) return;
+    console.log("Search button clicked!");
+    
+    if (!query.trim()) {
+      console.log("No query entered");
+      alert("Please enter a search term");
+      return;
+    }
+    
+    if (!location) {
+      console.log("Location not available yet");
+      alert("Location not available yet, please wait");
+      return;
+    }
 
+    console.log("Starting search with:", { query, location });
     setLoading(true);
+    setResults([]); // Clear previous results
+    
     try {
-      const { data } = await supabase.auth.getSession();
-      const token = data.session?.access_token;
+      const { data, error } = await supabase.auth.getSession();
+      
+      if (error) {
+        console.error("Auth error:", error);
+        alert("Authentication error. Please log in again.");
+        return;
+      }
+      
+      if (!data.session) {
+        console.error("No session found");
+        alert("You need to be logged in to search. Please log in.");
+        return;
+      }
+      
+      const token = data.session.access_token;
 
-      const res = await fetch(
-        `http://localhost:8080/restaurants/search?query=${encodeURIComponent(
-          query
-        )}&lat=${location.lat}&lng=${location.lng}`,
-        {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
-        }
-      );
+      const url = `http://localhost:8080/restaurants/search?query=${encodeURIComponent(
+        query
+      )}&lat=${location.lat}&lng=${location.lng}`;
+      
+      console.log("Fetching URL:", url);
+      console.log("Token:", token ? `Present (${token.substring(0, 20)}...)` : "Missing");
+      console.log("Session user:", data.session.user?.email);
+
+      const res = await fetch(url, {
+        method: "GET",
+        // no Authorization header
+      });
+
+      console.log("Response status:", res.status);
 
       if (res.ok) {
-        const data = await res.json();
-        setResults(data);
+        const responseData = await res.json();
+        console.log("Search results:", responseData);
+        console.log("Number of results:", responseData.length);
+        setResults(responseData);
+        
+        if (responseData.length === 0) {
+          alert("No restaurants found. Try a different search term.");
+        }
+      } else {
+        const errorText = await res.text();
+        console.error("Search failed:", res.status, errorText);
+        alert(`Search failed: ${res.status}`);
       }
-    } catch (error) {
+    } catch (error: any) {
       console.error("Search error:", error);
+      alert(`Error: ${error?.message || error}`);
     } finally {
       setLoading(false);
     }
@@ -141,6 +192,9 @@ export default function SearchTab() {
               </Pressable>
             )}
           </View>
+          <Pressable onPress={search} style={styles.searchButton}>
+            <Text style={styles.searchButtonText}>Search</Text>
+          </Pressable>
         </View>
 
         {locationError && (
@@ -221,6 +275,7 @@ const styles = StyleSheet.create({
   searchContainer: {
     paddingHorizontal: 20,
     paddingVertical: 10,
+    gap: 10,
   },
   searchBar: {
     flexDirection: "row",
@@ -234,6 +289,17 @@ const styles = StyleSheet.create({
     shadowOpacity: 0.05,
     shadowRadius: 4,
     elevation: 2,
+  },
+  searchButton: {
+    backgroundColor: "#007AFF",
+    paddingVertical: 14,
+    borderRadius: 12,
+    alignItems: "center",
+  },
+  searchButtonText: {
+    color: "#FFF",
+    fontSize: 16,
+    fontWeight: "600",
   },
   searchIcon: {
     marginRight: 8,
