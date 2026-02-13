@@ -25,12 +25,17 @@ export default function CreateReview() {
   const params = useLocalSearchParams();
   const restaurantName = params.name as string;
   const restaurantAddress = params.address as string;
+  const provider = params.provider as string;
+  const providerId = params.providerId as string;
+  const lat = params.lat ? parseFloat(params.lat as string) : undefined;
+  const lng = params.lng ? parseFloat(params.lng as string) : undefined;
   
   const [dishes, setDishes] = useState<DishReview[]>([
     { id: '1', name: '', rating: 0, ingredients: [] }
   ]);
   const [currentDishIndex, setCurrentDishIndex] = useState(0);
   const [ingredientInput, setIngredientInput] = useState('');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const currentDish = dishes[currentDishIndex];
 
@@ -69,7 +74,7 @@ export default function CreateReview() {
     setCurrentDishIndex(dishes.length);
   };
 
-  const handleContinue = () => {
+  const handleContinue = async () => {
     if (!currentDish.name.trim()) {
       Alert.alert("Missing Info", "Please enter a dish name");
       return;
@@ -79,9 +84,87 @@ export default function CreateReview() {
       return;
     }
     
-    // Navigate to photo step or submit
-    Alert.alert("Success", "Review created! (Photo step coming next)");
-    router.back();
+    setIsSubmitting(true);
+    
+    try {
+      // Get the authenticated user's session
+      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      
+      if (sessionError || !session) {
+        Alert.alert("Error", "You must be logged in to submit a review");
+        setIsSubmitting(false);
+        return;
+      }
+
+      // Calculate overall rating (average of all dishes)
+      const overallRating = Math.round(
+        dishes.reduce((sum, dish) => sum + dish.rating, 0) / dishes.length
+      );
+
+      // Prepare review data matching CreateReviewRequest DTO
+      const reviewData = {
+        provider: provider,
+        providerId: providerId,
+        name: restaurantName,
+        address: restaurantAddress,
+        lat: lat,
+        lng: lng,
+        rating: overallRating,
+        text: dishes.map(d => `${d.name} (${d.rating}⭐)`).join(', '),
+        dishes: dishes.map(d => d.name)
+      };
+
+      // Submit to backend API (Spring Boot)
+      const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8080';
+      
+      console.log('Submitting review to:', `${API_URL}/reviews`);
+      console.log('Review data:', reviewData);
+      
+      const response = await fetch(`${API_URL}/reviews`, {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${session.access_token}`,
+        },
+        body: JSON.stringify(reviewData),
+      });
+
+      console.log('Response status:', response.status);
+      console.log('Response headers:', response.headers);
+
+      if (!response.ok) {
+        const errorText = await response.text();
+        console.error('Error response:', errorText);
+        
+        let errorData;
+        try {
+          errorData = JSON.parse(errorText);
+        } catch {
+          errorData = { message: errorText };
+        }
+        
+        throw new Error(
+          errorData.message || 
+          `Server error: ${response.status} ${response.statusText}`
+        );
+      }
+
+      const result = await response.json();
+      console.log('Success response:', result);
+      
+      Alert.alert("Success", "Your review has been submitted!", [
+        { text: "OK", onPress: () => router.back() }
+      ]);
+      
+    } catch (error) {
+      console.error('Error submitting review:', error);
+      Alert.alert(
+        "Error", 
+        error instanceof Error ? error.message : "Failed to submit review. Please try again."
+      );
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (
@@ -197,9 +280,15 @@ export default function CreateReview() {
         </View>
 
         {/* Continue Button */}
-        <Pressable style={styles.continueButton} onPress={handleContinue}>
-          <Text style={styles.continueButtonText}>Continue to Review</Text>
-          <Ionicons name="arrow-forward" size={20} color="#FFF" />
+        <Pressable 
+          style={[styles.continueButton, isSubmitting && styles.continueButtonDisabled]} 
+          onPress={handleContinue}
+          disabled={isSubmitting}
+        >
+          <Text style={styles.continueButtonText}>
+            {isSubmitting ? "Submitting..." : "Submit Review"}
+          </Text>
+          {!isSubmitting && <Ionicons name="arrow-forward" size={20} color="#FFF" />}
         </Pressable>
 
         {/* Add Another Dish */}
@@ -429,6 +518,9 @@ const styles = StyleSheet.create({
     fontSize: 16,
     fontWeight: "700",
     color: "#FFF",
+  },
+  continueButtonDisabled: {
+    opacity: 0.6,
   },
   addDishButton: {
     flexDirection: "row",
