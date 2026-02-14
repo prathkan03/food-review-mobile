@@ -21,6 +21,9 @@ public class Profile{
     @Column(name = "avatar_url")
     private String avatarUrl;
 
+    @Column(name = "bio")
+    private String bio;
+
     @Column(name = "created_at")
     private OffsetDateTime createdAt;
 
@@ -35,6 +38,9 @@ public class Profile{
 
     public String getAvatarUrl() { return avatarUrl; }
     public void setAvatarUrl(String avatarUrl) { this.avatarUrl = avatarUrl; }
+
+    public String getBio() { return bio; }
+    public void setBio(String bio) { this.bio = bio; }
 
     public OffsetDateTime getCreatedAt() { return createdAt; }
     public void setCreatedAt(OffsetDateTime createdAt) { this.createdAt = createdAt; }

@@ -41,9 +41,11 @@ public class MeController {
       profile != null ? profile.getUsername() : null,
       profile != null ? profile.getDisplayName() : null,
       profile != null ? profile.getAvatarUrl() : null,
+      profile != null ? profile.getBio() : null,
       reviewCount,
       followerCount,
       followingCount
     );
   }
+
 }

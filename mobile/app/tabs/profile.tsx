@@ -19,6 +19,7 @@ interface ProfileData {
   username: string | null;
   displayName: string | null;
   avatarUrl: string | null;
+  bio: string | null;
   reviewCount: number;
   followerCount: number;
   followingCount: number;
@@ -58,8 +59,7 @@ export default function ProfileTab() {
       });
 
       if (res.ok) {
-        const profileData = await res.json();
-        setProfile(profileData);
+        setProfile(await res.json());
       }
     } catch (error) {
       console.error("Error fetching profile:", error);
@@ -75,9 +75,15 @@ export default function ProfileTab() {
         headers: { Authorization: `Bearer ${token}` },
       });
 
+      console.log("GET /reviews/my-reviews status:", res.status);
       if (res.ok) {
         const reviewData = await res.json();
+        console.log("My reviews response:", JSON.stringify(reviewData, null, 2));
+        console.log("Total reviews returned:", reviewData.length);
         setReviews(reviewData);
+      } else {
+        const errorText = await res.text();
+        console.error("Failed to fetch my reviews:", res.status, errorText);
       }
     } catch (error) {
       console.error("Error fetching reviews:", error);
@@ -106,13 +112,25 @@ export default function ProfileTab() {
   const formatDate = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
-    const diffTime = Math.abs(now.getTime() - date.getTime());
-    const diffDays = Math.ceil(diffTime / (1000 * 60 * 60 * 24));
+    const diffMs = now.getTime() - date.getTime();
+    const diffMins = Math.floor(diffMs / 60000);
+    const diffHours = Math.floor(diffMs / 3600000);
+    const diffDays = Math.floor(diffMs / 86400000);
+    const diffWeeks = Math.floor(diffDays / 7);
 
-    if (diffDays === 0) return "Today";
-    if (diffDays === 1) return "Yesterday";
+    if (diffMins < 1) return "just now";
+    if (diffMins < 60) return `${diffMins} min ago`;
+    if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
+    if (diffDays === 1) return "1 day ago";
     if (diffDays < 7) return `${diffDays} days ago`;
+    if (diffWeeks === 1) return "1 week ago";
+    if (diffWeeks < 5) return `${diffWeeks} weeks ago`;
     return date.toLocaleDateString();
+  };
+
+  const formatCount = (n: number): string => {
+    if (n >= 1000) return `${(n / 1000).toFixed(1).replace(/\.0$/, "")}k`;
+    return n.toString();
   };
 
   const handleReviewPress = (review: Review) => {
@@ -135,30 +153,37 @@ export default function ProfileTab() {
 
   const renderReviewCard = ({ item }: { item: Review }) => (
     <Pressable style={styles.reviewCard} onPress={() => handleReviewPress(item)}>
+      {/* Restaurant name + ellipsis */}
       <View style={styles.reviewCardHeader}>
-        <View style={{ flex: 1 }}>
-          <Text style={styles.reviewRestaurantName}>{item.restaurantName}</Text>
-          <View style={styles.ratingRow}>
-            {[1, 2, 3, 4, 5].map((star) => (
-              <Ionicons
-                key={star}
-                name={star <= item.rating ? "star" : "star-outline"}
-                size={14}
-                color="#FF6B35"
-              />
-            ))}
-            <Text style={styles.ratingScore}>{item.rating.toFixed(1)}</Text>
-            <Text style={styles.reviewTime}>{formatDate(item.createdAt)}</Text>
-          </View>
-        </View>
+        <Text style={styles.reviewRestaurantName}>{item.restaurantName}</Text>
+        <Pressable hitSlop={8}>
+          <Ionicons name="ellipsis-horizontal" size={18} color="#999" />
+        </Pressable>
       </View>
 
+      {/* Star rating + score + time */}
+      <View style={styles.ratingRow}>
+        {[1, 2, 3, 4, 5].map((star) => (
+          <Ionicons
+            key={star}
+            name={star <= item.rating ? "star" : "star-outline"}
+            size={13}
+            color={star <= item.rating ? "#1A1A1A" : "#CCC"}
+          />
+        ))}
+        <Text style={styles.ratingScore}>{item.rating.toFixed(1)}</Text>
+        <Text style={styles.dotSeparator}>{" \u00B7 "}</Text>
+        <Text style={styles.reviewTime}>{formatDate(item.createdAt)}</Text>
+      </View>
+
+      {/* Review text */}
       {item.text ? (
         <Text style={styles.reviewText} numberOfLines={3}>
           {item.text}
         </Text>
       ) : null}
 
+      {/* Photo thumbnails */}
       {item.photoUrls && item.photoUrls.length > 0 ? (
         <View style={styles.photoRow}>
           {item.photoUrls.slice(0, 3).map((url, index) => (
@@ -167,70 +192,22 @@ export default function ProfileTab() {
         </View>
       ) : null}
 
+      {/* Likes + Comments */}
       <View style={styles.reviewActions}>
-        <View style={styles.actionLeft}>
-          <View style={styles.actionItem}>
-            <Ionicons name="heart-outline" size={16} color="#999" />
-            <Text style={styles.actionCount}>0</Text>
-          </View>
-          <View style={styles.actionItem}>
-            <Ionicons name="chatbubble-outline" size={16} color="#999" />
-            <Text style={styles.actionCount}>0</Text>
-          </View>
+        <View style={styles.actionItem}>
+          <Ionicons name="heart-outline" size={15} color="#999" />
+          <Text style={styles.actionText}>24 LIKES</Text>
         </View>
-        <Ionicons name="bookmark-outline" size={16} color="#999" />
+        <View style={styles.actionItem}>
+          <Ionicons name="chatbubble-outline" size={14} color="#999" />
+          <Text style={styles.actionText}>8 COMMENTS</Text>
+        </View>
       </View>
     </Pressable>
   );
 
-  const renderTabContent = () => {
-    if (activeTab === "Reviews") {
-      return (
-        <FlatList
-          data={reviews}
-          keyExtractor={(item) => item.id}
-          renderItem={renderReviewCard}
-          contentContainerStyle={styles.reviewsList}
-          showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FF6B35" />
-          }
-          ListEmptyComponent={
-            <View style={styles.emptyContainer}>
-              <Ionicons name="restaurant-outline" size={48} color="#CCC" />
-              <Text style={styles.emptyText}>No reviews yet</Text>
-              <Text style={styles.emptySubtext}>Start reviewing restaurants!</Text>
-            </View>
-          }
-        />
-      );
-    }
-
-    return (
-      <View style={styles.emptyContainer}>
-        <Ionicons
-          name={activeTab === "Photos" ? "images-outline" : "bookmark-outline"}
-          size={48}
-          color="#CCC"
-        />
-        <Text style={styles.emptyText}>{activeTab} coming soon</Text>
-      </View>
-    );
-  };
-
-  return (
-    <SafeAreaView style={styles.container}>
-      {/* Header */}
-      <View style={styles.header}>
-        <Pressable onPress={() => router.back()}>
-          <Ionicons name="chevron-back" size={24} color="#1A1A1A" />
-        </Pressable>
-        <Text style={styles.headerTitle}>Profile</Text>
-        <Pressable onPress={handleLogout}>
-          <Ionicons name="settings-outline" size={24} color="#1A1A1A" />
-        </Pressable>
-      </View>
-
+  const renderProfileHeader = () => (
+    <View>
       {/* Avatar */}
       <View style={styles.avatarSection}>
         {profile?.avatarUrl ? (
@@ -240,10 +217,6 @@ export default function ProfileTab() {
             <Ionicons name="person" size={36} color="#999" />
           </View>
         )}
-      </View>
-
-      {/* Follow Button */}
-      <View style={styles.followButtonContainer}>
         <Pressable style={styles.followButton}>
           <Text style={styles.followButtonText}>Follow</Text>
         </Pressable>
@@ -259,21 +232,26 @@ export default function ProfileTab() {
         ) : null}
       </View>
 
-      {/* Stats Row */}
-      <View style={styles.statsRow}>
+      {/* Bio */}
+      {profile?.bio ? (
+        <Text style={styles.bio}>{profile.bio}</Text>
+      ) : null}
+
+      {/* Stats Card */}
+      <View style={styles.statsCard}>
         <View style={styles.statItem}>
-          <Text style={styles.statNumber}>{profile?.reviewCount ?? 0}</Text>
-          <Text style={styles.statLabel}>Reviews</Text>
+          <Text style={styles.statNumber}>{formatCount(profile?.reviewCount ?? 0)}</Text>
+          <Text style={styles.statLabel}>REVIEWS</Text>
         </View>
         <View style={styles.statDivider} />
         <View style={styles.statItem}>
-          <Text style={styles.statNumber}>{profile?.followerCount ?? 0}</Text>
-          <Text style={styles.statLabel}>Followers</Text>
+          <Text style={styles.statNumber}>{formatCount(profile?.followerCount ?? 0)}</Text>
+          <Text style={styles.statLabel}>FOLLOWERS</Text>
         </View>
         <View style={styles.statDivider} />
         <View style={styles.statItem}>
-          <Text style={styles.statNumber}>{profile?.followingCount ?? 0}</Text>
-          <Text style={styles.statLabel}>Following</Text>
+          <Text style={styles.statNumber}>{formatCount(profile?.followingCount ?? 0)}</Text>
+          <Text style={styles.statLabel}>FOLLOWING</Text>
         </View>
       </View>
 
@@ -291,9 +269,66 @@ export default function ProfileTab() {
           </Pressable>
         ))}
       </View>
+    </View>
+  );
 
-      {/* Tab Content */}
-      <View style={styles.tabContent}>{renderTabContent()}</View>
+  const renderTabPlaceholder = () => (
+    <View style={styles.emptyContainer}>
+      <Ionicons
+        name={activeTab === "Photos" ? "images-outline" : "bookmark-outline"}
+        size={48}
+        color="#CCC"
+      />
+      <Text style={styles.emptyText}>{activeTab} coming soon</Text>
+    </View>
+  );
+
+  return (
+    <SafeAreaView style={styles.container}>
+      {/* Header */}
+      <View style={styles.header}>
+        <Pressable onPress={() => router.back()} hitSlop={8}>
+          <Ionicons name="chevron-back" size={24} color="#1A1A1A" />
+        </Pressable>
+        <Text style={styles.headerTitle}>Profile</Text>
+        <Pressable onPress={handleLogout} hitSlop={8}>
+          <Ionicons name="settings-outline" size={22} color="#1A1A1A" />
+        </Pressable>
+      </View>
+
+      {activeTab === "Reviews" ? (
+        <FlatList
+          data={reviews}
+          keyExtractor={(item) => item.id}
+          renderItem={renderReviewCard}
+          ListHeaderComponent={renderProfileHeader}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FF6B35" />
+          }
+          ListEmptyComponent={
+            <View style={styles.emptyContainer}>
+              <Ionicons name="restaurant-outline" size={48} color="#CCC" />
+              <Text style={styles.emptyText}>No reviews yet</Text>
+              <Text style={styles.emptySubtext}>Start reviewing restaurants!</Text>
+            </View>
+          }
+        />
+      ) : (
+        <FlatList
+          data={[]}
+          keyExtractor={() => "placeholder"}
+          renderItem={() => null}
+          ListHeaderComponent={renderProfileHeader}
+          ListEmptyComponent={renderTabPlaceholder}
+          contentContainerStyle={styles.listContent}
+          showsVerticalScrollIndicator={false}
+          refreshControl={
+            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FF6B35" />
+          }
+        />
+      )}
     </SafeAreaView>
   );
 }
@@ -318,17 +353,22 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 12,
+    paddingTop: 8,
+    paddingBottom: 8,
   },
   headerTitle: {
-    fontSize: 18,
+    fontSize: 17,
     fontWeight: "700",
     color: "#1A1A1A",
   },
+  listContent: {
+    paddingBottom: 30,
+  },
+
+  /* ---- Profile Section ---- */
   avatarSection: {
     alignItems: "center",
-    marginTop: 8,
+    marginTop: 12,
   },
   avatar: {
     width: 80,
@@ -343,19 +383,16 @@ const styles = StyleSheet.create({
     alignItems: "center",
     justifyContent: "center",
   },
-  followButtonContainer: {
-    alignItems: "center",
-    marginTop: 12,
-  },
   followButton: {
     backgroundColor: "#FF6B35",
-    paddingHorizontal: 32,
-    paddingVertical: 8,
+    paddingHorizontal: 28,
+    paddingVertical: 7,
     borderRadius: 20,
+    marginTop: 10,
   },
   followButtonText: {
     color: "#FFF",
-    fontSize: 14,
+    fontSize: 13,
     fontWeight: "600",
   },
   nameSection: {
@@ -372,35 +409,52 @@ const styles = StyleSheet.create({
     color: "#999",
     marginTop: 2,
   },
-  statsRow: {
+  bio: {
+    fontSize: 13,
+    color: "#666",
+    lineHeight: 19,
+    textAlign: "center",
+    paddingHorizontal: 32,
+    marginTop: 8,
+  },
+
+  /* ---- Stats Card ---- */
+  statsCard: {
     flexDirection: "row",
-    justifyContent: "center",
-    alignItems: "center",
-    marginTop: 20,
-    paddingHorizontal: 40,
+    marginHorizontal: 24,
+    marginTop: 16,
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 1,
+    borderColor: "#E8E8E8",
   },
   statItem: {
     flex: 1,
     alignItems: "center",
   },
   statNumber: {
-    fontSize: 18,
-    fontWeight: "700",
+    fontSize: 17,
+    fontWeight: "800",
     color: "#1A1A1A",
   },
   statLabel: {
-    fontSize: 12,
+    fontSize: 10,
+    fontWeight: "600",
     color: "#999",
     marginTop: 2,
+    letterSpacing: 0.5,
   },
   statDivider: {
     width: 1,
-    height: 24,
-    backgroundColor: "#E0E0E0",
+    height: 28,
+    backgroundColor: "#E8E8E8",
+    alignSelf: "center",
   },
+
+  /* ---- Tab Bar ---- */
   tabBar: {
     flexDirection: "row",
-    marginTop: 20,
+    marginTop: 18,
     borderBottomWidth: 1,
     borderBottomColor: "#F0F0F0",
   },
@@ -422,89 +476,80 @@ const styles = StyleSheet.create({
     color: "#FF6B35",
     fontWeight: "600",
   },
-  tabContent: {
-    flex: 1,
-  },
-  reviewsList: {
-    paddingHorizontal: 16,
-    paddingTop: 12,
-    paddingBottom: 20,
-  },
+
+  /* ---- Review Cards ---- */
   reviewCard: {
-    backgroundColor: "#FFF",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.06,
-    shadowRadius: 4,
-    elevation: 2,
+    paddingHorizontal: 20,
+    paddingVertical: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F0F0F0",
   },
   reviewCardHeader: {
     flexDirection: "row",
-    alignItems: "flex-start",
+    justifyContent: "space-between",
+    alignItems: "center",
   },
   reviewRestaurantName: {
     fontSize: 16,
     fontWeight: "700",
     color: "#1A1A1A",
-    marginBottom: 4,
+    flex: 1,
+    marginRight: 8,
   },
   ratingRow: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 2,
+    marginTop: 4,
   },
   ratingScore: {
     fontSize: 13,
     fontWeight: "600",
-    color: "#FF6B35",
+    color: "#1A1A1A",
     marginLeft: 6,
   },
-  reviewTime: {
-    fontSize: 12,
+  dotSeparator: {
+    fontSize: 13,
     color: "#999",
-    marginLeft: 8,
+  },
+  reviewTime: {
+    fontSize: 13,
+    color: "#999",
   },
   reviewText: {
     fontSize: 14,
-    color: "#666",
+    color: "#444",
     lineHeight: 20,
-    marginTop: 8,
+    marginTop: 10,
   },
   photoRow: {
     flexDirection: "row",
     gap: 8,
-    marginTop: 10,
+    marginTop: 12,
   },
   photoThumb: {
-    width: 80,
-    height: 80,
-    borderRadius: 8,
+    width: 90,
+    height: 90,
+    borderRadius: 10,
   },
   reviewActions: {
     flexDirection: "row",
-    justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 12,
-    paddingTop: 10,
-    borderTopWidth: 1,
-    borderTopColor: "#F5F5F5",
-  },
-  actionLeft: {
-    flexDirection: "row",
-    gap: 16,
+    gap: 20,
+    marginTop: 14,
   },
   actionItem: {
     flexDirection: "row",
     alignItems: "center",
-    gap: 4,
+    gap: 5,
   },
-  actionCount: {
-    fontSize: 12,
+  actionText: {
+    fontSize: 11,
+    fontWeight: "600",
     color: "#999",
+    letterSpacing: 0.3,
   },
+
+  /* ---- Empty State ---- */
   emptyContainer: {
     alignItems: "center",
     justifyContent: "center",
