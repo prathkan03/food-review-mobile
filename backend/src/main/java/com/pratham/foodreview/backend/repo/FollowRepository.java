@@ -9,4 +9,6 @@ import java.util.UUID;
 
 public interface FollowRepository extends JpaRepository<Follow, FollowId> {
   List<Follow> findByFollower_Id(UUID followerId);
+  long countByFollower_Id(UUID followerId);
+  long countByFollowing_Id(UUID followingId);
 }

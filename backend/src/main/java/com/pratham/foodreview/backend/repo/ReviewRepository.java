@@ -14,4 +14,6 @@ public interface ReviewRepository extends JpaRepository<Review, UUID> {
   
   @Query("SELECT r FROM Review r WHERE r.user.id IN :userIds ORDER BY r.createdAt DESC")
   List<Review> findByUser_IdInOrderByCreatedAtDesc(@Param("userIds") List<UUID> userIds);
+
+  long countByUser_Id(UUID userId);
 }
