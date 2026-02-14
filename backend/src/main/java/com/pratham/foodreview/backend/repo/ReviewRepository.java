@@ -10,10 +10,12 @@ import java.util.UUID;
 
 public interface ReviewRepository extends JpaRepository<Review, UUID> {
   List<Review> findByUser_IdOrderByCreatedAtDesc(UUID userId);
-  List<Review> findByRestaurant_IdOrderByCreatedAtDesc(UUID restaurantId);
+  @Query("SELECT r FROM Review r JOIN FETCH r.user JOIN FETCH r.restaurant WHERE r.restaurant.id = :restaurantId ORDER BY r.createdAt DESC")
+  List<Review> findByRestaurant_IdOrderByCreatedAtDesc(@Param("restaurantId") UUID restaurantId);
   
   @Query("SELECT r FROM Review r WHERE r.user.id IN :userIds ORDER BY r.createdAt DESC")
   List<Review> findByUser_IdInOrderByCreatedAtDesc(@Param("userIds") List<UUID> userIds);
 
   long countByUser_Id(UUID userId);
+  long countByRestaurant_Id(UUID restaurantId);
 }

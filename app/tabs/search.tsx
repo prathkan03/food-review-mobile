@@ -17,7 +17,7 @@ import { supabase } from "../../src/components/services/supabase";
 import * as Location from "expo-location";
 import { router } from "expo-router";
 
-interface Restaurant {
+interface SearchResult {
   provider: string;
   providerId: string;
   name: string;
@@ -26,6 +26,18 @@ interface Restaurant {
   lng: number;
   rating?: number;
   priceLevel?: number;
+}
+
+interface TrendingRestaurant {
+  id: string;
+  name: string;
+  address: string;
+  lat: number;
+  lng: number;
+  photoUrl?: string;
+  categories?: string[];
+  priceTier?: number;
+  reviewCount: number;
 }
 
 const TRENDING_CUISINES = [
@@ -38,30 +50,28 @@ const TRENDING_CUISINES = [
 
 export default function SearchTab() {
   const [query, setQuery] = useState("");
-  const [results, setResults] = useState<Restaurant[]>([]);
+  const [results, setResults] = useState<SearchResult[]>([]);
+  const [trending, setTrending] = useState<TrendingRestaurant[]>([]);
   const [loading, setLoading] = useState(false);
+  const [trendingLoading, setTrendingLoading] = useState(true);
   const [location, setLocation] = useState<{ lat: number; lng: number } | null>(null);
-  const [locationError, setLocationError] = useState<string | null>(null);
-  const [recentSearches, setRecentSearches] = useState<string[]>(["Spicy Ramen", "Le Petit Bistro", "Vegan Burgers"]);
+  const [recentSearches, setRecentSearches] = useState<string[]>([
+    "Spicy Ramen",
+    "Le Petit Bistro",
+    "Vegan Burgers",
+  ]);
 
   useEffect(() => {
     (async () => {
-      // Check if running on web
-      if (Platform.OS === 'web') {
-        console.log("Running on web, using default location");
+      if (Platform.OS === "web") {
         setLocation({ lat: 39.9612, lng: -82.9988 });
-        setLocationError("Using default location (web browser)");
         return;
       }
-
       let { status } = await Location.requestForegroundPermissionsAsync();
       if (status !== "granted") {
-        setLocationError("Permission to access location was denied");
-        // Default to Columbus, OH coordinates
         setLocation({ lat: 39.9612, lng: -82.9988 });
         return;
       }
-
       let currentLocation = await Location.getCurrentPositionAsync({});
       setLocation({
         lat: currentLocation.coords.latitude,
@@ -70,81 +80,58 @@ export default function SearchTab() {
     })();
   }, []);
 
-  const search = async () => {
-    console.log("Search button clicked!");
-    
-    if (!query.trim()) {
-      console.log("No query entered");
-      alert("Please enter a search term");
-      return;
+  useEffect(() => {
+    fetchTrending();
+  }, []);
+
+  const fetchTrending = async () => {
+    try {
+      const res = await fetch("http://localhost:8080/restaurants/trending");
+      if (res.ok) {
+        const data = await res.json();
+        console.log("Trending restaurants:", data.length);
+        setTrending(data);
+      }
+    } catch (error) {
+      console.error("Error fetching trending:", error);
+    } finally {
+      setTrendingLoading(false);
     }
-    
+  };
+
+  const search = async () => {
+    if (!query.trim()) return;
     if (!location) {
-      console.log("Location not available yet");
       alert("Location not available yet, please wait");
       return;
     }
 
-    console.log("Starting search with:", { query, location });
     setLoading(true);
-    setResults([]); // Clear previous results
-    
-    try {
-      const { data, error } = await supabase.auth.getSession();
-      
-      if (error) {
-        console.error("Auth error:", error);
-        alert("Authentication error. Please log in again.");
-        return;
-      }
-      
-      if (!data.session) {
-        console.error("No session found");
-        alert("You need to be logged in to search. Please log in.");
-        return;
-      }
-      
-      const token = data.session.access_token;
+    setResults([]);
 
+    try {
       const url = `http://localhost:8080/restaurants/search?query=${encodeURIComponent(
         query
       )}&lat=${location.lat}&lng=${location.lng}`;
-      
-      console.log("Fetching URL:", url);
-      console.log("Token:", token ? `Present (${token.substring(0, 20)}...)` : "Missing");
-      console.log("Session user:", data.session.user?.email);
 
-      const res = await fetch(url, {
-        method: "GET",
-        // no Authorization header
-      });
-
-      console.log("Response status:", res.status);
+      const res = await fetch(url);
 
       if (res.ok) {
-        const responseData = await res.json();
-        console.log("Search results:", responseData);
-        console.log("Number of results:", responseData.length);
-        setResults(responseData);
-        
-        if (responseData.length === 0) {
-          alert("No restaurants found. Try a different search term.");
+        const data = await res.json();
+        setResults(data);
+        // Add to recent searches
+        if (!recentSearches.includes(query.trim())) {
+          setRecentSearches((prev) => [query.trim(), ...prev].slice(0, 5));
         }
-      } else {
-        const errorText = await res.text();
-        console.error("Search failed:", res.status, errorText);
-        alert(`Search failed: ${res.status}`);
       }
-    } catch (error: any) {
+    } catch (error) {
       console.error("Search error:", error);
-      alert(`Error: ${error?.message || error}`);
     } finally {
       setLoading(false);
     }
   };
 
-  const handleSelectRestaurant = (restaurant: Restaurant) => {
-    // Navigate to create review screen with restaurant data
+  const handleSelectRestaurant = (restaurant: SearchResult) => {
     router.push({
       pathname: "/reviews/create",
       params: {
@@ -158,28 +145,112 @@ export default function SearchTab() {
     });
   };
 
-  const renderRating = (rating?: number) => {
-    if (!rating) return null;
-    return (
-      <View style={styles.ratingContainer}>
-        <Ionicons name="star" size={14} color="#FFB800" />
-        <Text style={styles.ratingText}>{rating.toFixed(1)}</Text>
+  const handleTrendingPress = (restaurant: TrendingRestaurant) => {
+    router.push({
+      pathname: "/restaurants/[id]",
+      params: { id: restaurant.id },
+    });
+  };
+
+  const handleRecentSearchPress = (term: string) => {
+    setQuery(term);
+    // Trigger search with the term
+    setLoading(true);
+    setResults([]);
+    if (!location) return;
+    fetch(
+      `http://localhost:8080/restaurants/search?query=${encodeURIComponent(
+        term
+      )}&lat=${location.lat}&lng=${location.lng}`
+    )
+      .then((res) => (res.ok ? res.json() : []))
+      .then((data) => setResults(data))
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  };
+
+  const formatPrice = (tier?: number) => {
+    if (!tier) return "";
+    return "$".repeat(tier);
+  };
+
+  const formatCategories = (categories?: string[]) => {
+    if (!categories || categories.length === 0) return null;
+    return categories.slice(0, 3).join(" • ");
+  };
+
+  const isSearchActive = loading || results.length > 0;
+
+  const renderTrendingCard = (restaurant: TrendingRestaurant) => (
+    <Pressable
+      key={restaurant.id}
+      style={styles.trendingCard}
+      onPress={() => handleTrendingPress(restaurant)}
+    >
+      {/* Photo */}
+      <View style={styles.trendingImageContainer}>
+        {restaurant.photoUrl ? (
+          <Image
+            source={{ uri: restaurant.photoUrl }}
+            style={styles.trendingImage}
+            resizeMode="cover"
+          />
+        ) : (
+          <View style={styles.trendingImagePlaceholder}>
+            <Ionicons name="restaurant" size={40} color="#DDD" />
+          </View>
+        )}
+        {/* Popular badge */}
+        <View style={styles.popularBadge}>
+          <Text style={styles.popularBadgeText}>POPULAR</Text>
+        </View>
+        {/* Rating badge */}
+        {restaurant.reviewCount > 0 && (
+          <View style={styles.ratingBadge}>
+            <Ionicons name="star" size={11} color="#FFF" />
+            <Text style={styles.ratingBadgeText}>4.8</Text>
+          </View>
+        )}
       </View>
-    );
-  };
 
-  const renderPriceLevel = (level?: number) => {
-    if (!level) return null;
-    return <Text style={styles.priceLevel}>{"$".repeat(level)}</Text>;
-  };
-
-  const clearRecentSearch = (searchTerm: string) => {
-    setRecentSearches(prev => prev.filter(s => s !== searchTerm));
-  };
+      {/* Info */}
+      <View style={styles.trendingInfo}>
+        <View style={styles.trendingNameRow}>
+          <Text style={styles.trendingName}>{restaurant.name}</Text>
+          <Text style={styles.trendingPrice}>{formatPrice(restaurant.priceTier)}</Text>
+        </View>
+        {formatCategories(restaurant.categories) ? (
+          <Text style={styles.trendingCategories}>
+            {formatCategories(restaurant.categories)}
+          </Text>
+        ) : (
+          <Text style={styles.trendingCategories} numberOfLines={1}>
+            {restaurant.address}
+          </Text>
+        )}
+        <View style={styles.trendingReviewRow}>
+          {/* Placeholder avatar stack */}
+          <View style={styles.avatarStack}>
+            <View style={[styles.miniAvatar, { backgroundColor: "#FF6B35" }]}>
+              <Ionicons name="person" size={10} color="#FFF" />
+            </View>
+            <View style={[styles.miniAvatar, { backgroundColor: "#4A90D9", marginLeft: -8 }]}>
+              <Ionicons name="person" size={10} color="#FFF" />
+            </View>
+          </View>
+          <Text style={styles.trendingReviewCount}>
+            {restaurant.reviewCount > 0
+              ? `${restaurant.reviewCount}+ reviews`
+              : "No reviews yet"}
+          </Text>
+        </View>
+      </View>
+    </Pressable>
+  );
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView showsVerticalScrollIndicator={false} contentContainerStyle={{ paddingBottom: 100 }}>
         {/* Header */}
         <View style={styles.header}>
           <Text style={styles.title}>Search</Text>
@@ -207,56 +278,7 @@ export default function SearchTab() {
           </Pressable>
         </View>
 
-        {/* Recent Searches */}
-        {!loading && results.length === 0 && (
-          <>
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>RECENT SEARCHES</Text>
-              <Pressable onPress={() => setRecentSearches([])}>
-                <Text style={styles.clearAllText}>Clear All</Text>
-              </Pressable>
-            </View>
-            <View style={styles.recentSearches}>
-              {recentSearches.map((search, index) => (
-                <View key={index} style={styles.recentSearchChip}>
-                  <Ionicons name="time-outline" size={14} color="#666" />
-                  <Text style={styles.recentSearchText}>{search}</Text>
-                  <Pressable onPress={() => clearRecentSearch(search)}>
-                    <Ionicons name="close" size={14} color="#999" />
-                  </Pressable>
-                </View>
-              ))}
-            </View>
-
-            {/* Trending Cuisines */}
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>TRENDING CUISINES</Text>
-            </View>
-            <ScrollView horizontal showsHorizontalScrollIndicator={false} style={styles.cuisineScroll}>
-              {TRENDING_CUISINES.map((cuisine) => (
-                <Pressable key={cuisine.id} style={styles.cuisineCard} onPress={() => {
-                  setQuery(cuisine.name);
-                  search();
-                }}>
-                  <View style={styles.cuisineImage}>
-                    <Text style={styles.cuisineEmoji}>{cuisine.emoji}</Text>
-                  </View>
-                  <Text style={styles.cuisineName}>{cuisine.name}</Text>
-                </Pressable>
-              ))}
-            </ScrollView>
-
-            {/* Trending Restaurants */}
-            <View style={styles.sectionHeader}>
-              <Text style={styles.sectionTitle}>Trending Restaurants</Text>
-              <Pressable>
-                <Text style={styles.seeAllText}>See All</Text>
-              </Pressable>
-            </View>
-          </>
-        )}
-
-        {/* Loading State */}
+        {/* Loading */}
         {loading && (
           <View style={styles.loadingContainer}>
             <ActivityIndicator size="large" color="#FF6B35" />
@@ -267,30 +289,39 @@ export default function SearchTab() {
         {/* Search Results */}
         {!loading && results.length > 0 && (
           <View style={styles.resultsContainer}>
-            <Text style={styles.resultsTitle}>Search Results</Text>
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitleLarge}>Search Results</Text>
+              <Pressable onPress={() => { setResults([]); setQuery(""); }}>
+                <Text style={styles.clearAllText}>Clear</Text>
+              </Pressable>
+            </View>
             {results.map((item) => (
               <Pressable
                 key={item.providerId}
-                style={styles.restaurantCard}
+                style={styles.searchResultCard}
                 onPress={() => handleSelectRestaurant(item)}
               >
-                <View style={styles.restaurantImagePlaceholder}>
-                  <Ionicons name="restaurant" size={32} color="#FF6B35" />
+                <View style={styles.searchResultIcon}>
+                  <Ionicons name="restaurant" size={24} color="#FF6B35" />
                 </View>
-                <View style={styles.restaurantInfo}>
-                  <Text style={styles.restaurantName}>{item.name}</Text>
-                  <Text style={styles.restaurantAddress} numberOfLines={1}>
+                <View style={styles.searchResultInfo}>
+                  <Text style={styles.searchResultName}>{item.name}</Text>
+                  <Text style={styles.searchResultAddress} numberOfLines={1}>
                     {item.address}
                   </Text>
-                  <View style={styles.restaurantMeta}>
+                  <View style={styles.searchResultMeta}>
                     {item.rating && (
-                      <View style={styles.ratingBadge}>
+                      <View style={styles.searchResultRating}>
                         <Ionicons name="star" size={12} color="#FFB800" />
-                        <Text style={styles.ratingText}>{item.rating.toFixed(1)}</Text>
+                        <Text style={styles.searchResultRatingText}>
+                          {item.rating.toFixed(1)}
+                        </Text>
                       </View>
                     )}
                     {item.priceLevel && (
-                      <Text style={styles.priceLevel}>{"$".repeat(item.priceLevel)}</Text>
+                      <Text style={styles.searchResultPrice}>
+                        {"$".repeat(item.priceLevel)}
+                      </Text>
                     )}
                   </View>
                 </View>
@@ -298,6 +329,79 @@ export default function SearchTab() {
               </Pressable>
             ))}
           </View>
+        )}
+
+        {/* Default view (no search active) */}
+        {!isSearchActive && (
+          <>
+            {/* Recent Searches */}
+            {recentSearches.length > 0 && (
+              <>
+                <View style={styles.sectionHeader}>
+                  <Text style={styles.sectionTitle}>RECENT SEARCHES</Text>
+                  <Pressable onPress={() => setRecentSearches([])}>
+                    <Text style={styles.clearAllText}>Clear All</Text>
+                  </Pressable>
+                </View>
+                <View style={styles.recentSearches}>
+                  {recentSearches.map((term, index) => (
+                    <Pressable
+                      key={index}
+                      style={styles.recentSearchChip}
+                      onPress={() => handleRecentSearchPress(term)}
+                    >
+                      <Ionicons name="time-outline" size={14} color="#666" />
+                      <Text style={styles.recentSearchText}>{term}</Text>
+                    </Pressable>
+                  ))}
+                </View>
+              </>
+            )}
+
+            {/* Trending Cuisines */}
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitle}>TRENDING CUISINES</Text>
+            </View>
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.cuisineScroll}
+            >
+              {TRENDING_CUISINES.map((cuisine) => (
+                <Pressable
+                  key={cuisine.id}
+                  style={styles.cuisineCard}
+                  onPress={() => handleRecentSearchPress(cuisine.name)}
+                >
+                  <View style={styles.cuisineImage}>
+                    <Text style={styles.cuisineEmoji}>{cuisine.emoji}</Text>
+                  </View>
+                  <Text style={styles.cuisineName}>{cuisine.name}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+
+            {/* Trending Restaurants */}
+            <View style={styles.sectionHeader}>
+              <Text style={styles.sectionTitleLarge}>Trending Restaurants</Text>
+              <Pressable>
+                <Text style={styles.seeAllText}>See All</Text>
+              </Pressable>
+            </View>
+
+            {trendingLoading ? (
+              <View style={styles.loadingContainer}>
+                <ActivityIndicator size="large" color="#FF6B35" />
+              </View>
+            ) : trending.length === 0 ? (
+              <View style={styles.emptyContainer}>
+                <Ionicons name="restaurant-outline" size={48} color="#CCC" />
+                <Text style={styles.emptyText}>No restaurants yet</Text>
+              </View>
+            ) : (
+              trending.map(renderTrendingCard)
+            )}
+          </>
         )}
       </ScrollView>
     </SafeAreaView>
@@ -315,7 +419,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     paddingHorizontal: 20,
     paddingTop: 16,
-    paddingBottom: 16,
+    paddingBottom: 12,
   },
   title: {
     fontSize: 24,
@@ -325,7 +429,7 @@ const styles = StyleSheet.create({
   searchSection: {
     flexDirection: "row",
     paddingHorizontal: 20,
-    paddingVertical: 12,
+    paddingBottom: 8,
     gap: 12,
   },
   searchBar: {
@@ -335,7 +439,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#F5F5F5",
     borderRadius: 12,
     paddingHorizontal: 16,
-    height: 50,
+    height: 48,
     gap: 8,
   },
   searchInput: {
@@ -344,8 +448,8 @@ const styles = StyleSheet.create({
     color: "#1A1A1A",
   },
   filterButton: {
-    width: 50,
-    height: 50,
+    width: 48,
+    height: 48,
     backgroundColor: "#FF6B35",
     borderRadius: 12,
     justifyContent: "center",
@@ -356,7 +460,7 @@ const styles = StyleSheet.create({
     justifyContent: "space-between",
     alignItems: "center",
     paddingHorizontal: 20,
-    paddingTop: 24,
+    paddingTop: 22,
     paddingBottom: 12,
   },
   sectionTitle: {
@@ -364,6 +468,11 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#999",
     letterSpacing: 0.5,
+  },
+  sectionTitleLarge: {
+    fontSize: 18,
+    fontWeight: "700",
+    color: "#1A1A1A",
   },
   clearAllText: {
     fontSize: 14,
@@ -386,7 +495,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
     backgroundColor: "#F5F5F5",
     borderRadius: 20,
-    paddingHorizontal: 12,
+    paddingHorizontal: 14,
     paddingVertical: 8,
     gap: 6,
   },
@@ -402,24 +511,191 @@ const styles = StyleSheet.create({
     marginRight: 16,
   },
   cuisineImage: {
-    width: 64,
-    height: 64,
-    borderRadius: 32,
-    backgroundColor: "#F5F5F5",
+    width: 60,
+    height: 60,
+    borderRadius: 30,
+    backgroundColor: "#FFF5F0",
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 8,
   },
   cuisineEmoji: {
-    fontSize: 32,
+    fontSize: 28,
   },
   cuisineName: {
     fontSize: 13,
     color: "#333",
     fontWeight: "500",
   },
+
+  /* ---- Trending Restaurant Cards ---- */
+  trendingCard: {
+    marginHorizontal: 20,
+    marginBottom: 24,
+  },
+  trendingImageContainer: {
+    width: "100%",
+    height: 180,
+    borderRadius: 16,
+    overflow: "hidden",
+    position: "relative",
+  },
+  trendingImage: {
+    width: "100%",
+    height: "100%",
+  },
+  trendingImagePlaceholder: {
+    width: "100%",
+    height: "100%",
+    backgroundColor: "#F0F0F0",
+    justifyContent: "center",
+    alignItems: "center",
+  },
+  popularBadge: {
+    position: "absolute",
+    bottom: 12,
+    left: 12,
+    backgroundColor: "#FF6B35",
+    paddingHorizontal: 10,
+    paddingVertical: 4,
+    borderRadius: 6,
+  },
+  popularBadgeText: {
+    color: "#FFF",
+    fontSize: 10,
+    fontWeight: "800",
+    letterSpacing: 0.5,
+  },
+  ratingBadge: {
+    position: "absolute",
+    top: 12,
+    right: 12,
+    backgroundColor: "#FF6B35",
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 8,
+    paddingVertical: 4,
+    borderRadius: 12,
+    gap: 3,
+  },
+  ratingBadgeText: {
+    color: "#FFF",
+    fontSize: 12,
+    fontWeight: "700",
+  },
+  trendingInfo: {
+    paddingTop: 12,
+    paddingBottom: 16,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F0F0F0",
+  },
+  trendingNameRow: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+  },
+  trendingName: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: "#1A1A1A",
+    flex: 1,
+    marginRight: 8,
+  },
+  trendingPrice: {
+    fontSize: 14,
+    fontWeight: "600",
+    color: "#999",
+  },
+  trendingCategories: {
+    fontSize: 13,
+    color: "#999",
+    marginTop: 3,
+  },
+  trendingReviewRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginTop: 10,
+    gap: 8,
+  },
+  avatarStack: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+  miniAvatar: {
+    width: 22,
+    height: 22,
+    borderRadius: 11,
+    justifyContent: "center",
+    alignItems: "center",
+    borderWidth: 2,
+    borderColor: "#FFF",
+  },
+  trendingReviewCount: {
+    fontSize: 12,
+    color: "#999",
+  },
+
+  /* ---- Search Results ---- */
+  resultsContainer: {
+    paddingHorizontal: 20,
+  },
+  searchResultCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFF",
+    borderRadius: 12,
+    padding: 12,
+    marginBottom: 10,
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+  },
+  searchResultIcon: {
+    width: 52,
+    height: 52,
+    borderRadius: 10,
+    backgroundColor: "#FFF5F0",
+    justifyContent: "center",
+    alignItems: "center",
+    marginRight: 12,
+  },
+  searchResultInfo: {
+    flex: 1,
+  },
+  searchResultName: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#1A1A1A",
+    marginBottom: 3,
+  },
+  searchResultAddress: {
+    fontSize: 13,
+    color: "#999",
+    marginBottom: 4,
+  },
+  searchResultMeta: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+  },
+  searchResultRating: {
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 3,
+  },
+  searchResultRatingText: {
+    fontSize: 12,
+    fontWeight: "600",
+    color: "#333",
+  },
+  searchResultPrice: {
+    fontSize: 13,
+    color: "#999",
+    fontWeight: "600",
+  },
+
+  /* ---- States ---- */
   loadingContainer: {
-    paddingVertical: 60,
+    paddingVertical: 40,
     justifyContent: "center",
     alignItems: "center",
   },
@@ -428,76 +704,13 @@ const styles = StyleSheet.create({
     fontSize: 14,
     color: "#666",
   },
-  resultsContainer: {
-    paddingHorizontal: 20,
-    paddingTop: 16,
-  },
-  resultsTitle: {
-    fontSize: 18,
-    fontWeight: "700",
-    color: "#1A1A1A",
-    marginBottom: 16,
-  },
-  restaurantCard: {
-    flexDirection: "row",
+  emptyContainer: {
     alignItems: "center",
-    backgroundColor: "#FFF",
-    borderRadius: 12,
-    padding: 12,
-    marginBottom: 12,
-    borderWidth: 1,
-    borderColor: "#F0F0F0",
+    paddingVertical: 40,
   },
-  restaurantImagePlaceholder: {
-    width: 60,
-    height: 60,
-    borderRadius: 8,
-    backgroundColor: "#FFF5F0",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
-  },
-  restaurantInfo: {
-    flex: 1,
-  },
-  restaurantName: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#1A1A1A",
-    marginBottom: 4,
-  },
-  restaurantAddress: {
-    fontSize: 13,
+  emptyText: {
+    fontSize: 15,
     color: "#999",
-    marginBottom: 6,
-  },
-  restaurantMeta: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 8,
-  },
-  ratingBadge: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#FFF9E6",
-    paddingHorizontal: 6,
-    paddingVertical: 2,
-    borderRadius: 4,
-    gap: 4,
-  },
-  ratingContainer: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 4,
-  },
-  ratingText: {
-    fontSize: 12,
-    color: "#333",
-    fontWeight: "600",
-  },
-  priceLevel: {
-    fontSize: 13,
-    color: "#999",
-    fontWeight: "600",
+    marginTop: 10,
   },
 });
