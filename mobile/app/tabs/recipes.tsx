@@ -3,7 +3,7 @@ import {
   View,
   Text,
   TextInput,
-  FlatList,
+  ScrollView,
   Pressable,
   StyleSheet,
   SafeAreaView,
@@ -11,36 +11,182 @@ import {
   Platform,
   ActivityIndicator,
   Alert,
+  Image,
+  Dimensions,
+  useWindowDimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
-import { supabase } from "../../src/components/services/supabase";
+
+/* ------------------------------------------------------------------ */
+/*  Types                                                              */
+/* ------------------------------------------------------------------ */
+
+interface RecipeCard {
+  title: string;
+  imageUrl?: string;
+  ingredients: string[];
+  steps: string[];
+}
 
 interface Message {
   id: string;
   role: "user" | "assistant";
   content: string;
-  items?: string[];
+  recipe?: RecipeCard;
   timestamp: Date;
 }
 
+interface ChatSession {
+  id: string;
+  title: string;
+  icon: string;
+  messages: Message[];
+}
+
+/* ------------------------------------------------------------------ */
+/*  Sample data to match the screenshots                               */
+/* ------------------------------------------------------------------ */
+
+const SAMPLE_SESSIONS: ChatSession[] = [
+  {
+    id: "1",
+    title: "Spicy Butter Chicken",
+    icon: "flame-outline",
+    messages: [
+      {
+        id: "m1",
+        role: "assistant",
+        content:
+          'Based on your glowing review of The Spice Hub, I\'ve reverse-engineered their signature Spicy Butter Chicken recipe for you. It features that same creamy texture and smoky spice profile you loved!',
+        timestamp: new Date(),
+      },
+      {
+        id: "m2",
+        role: "assistant",
+        content: "",
+        recipe: {
+          title: "The Spice Hub Style Butter Chicken",
+          imageUrl:
+            "https://images.unsplash.com/photo-1603894584373-5ac82b2ae398?w=800&q=80",
+          ingredients: [
+            "500g Boneless Chicken Thighs",
+            "2 tbsp Kashmiri Chili Powder",
+            "100ml Heavy Cream",
+            "50g Cold Butter (Cubed)",
+            "1 tbsp Kasuri Methi (Dried Fenugreek)",
+            "Ginger Garlic Paste (2 tbsp)",
+          ],
+          steps: [
+            "Marinate the chicken with ginger-garlic paste, salt, and chili powder for at least 30 minutes. Sear in a hot pan until charred but tender.",
+            "Prepare the gravy using pureed tomatoes, cashews, and spices. Simmer until the oil begins to separate.",
+            "Add the chicken and fold in the cold butter and heavy cream. Finish with crushed Kasuri Methi for that authentic aroma.",
+          ],
+        },
+        timestamp: new Date(),
+      },
+      {
+        id: "m3",
+        role: "assistant",
+        content:
+          "Ready to cook? Or would you like to know how to make this vegan-friendly?",
+        timestamp: new Date(),
+      },
+    ],
+  },
+  {
+    id: "2",
+    title: "Classic Carbonara",
+    icon: "restaurant-outline",
+    messages: [
+      {
+        id: "m4",
+        role: "assistant",
+        content:
+          "Here's an authentic Roman-style Carbonara recipe for you!",
+        timestamp: new Date(),
+      },
+    ],
+  },
+  {
+    id: "3",
+    title: "Miso Glazed Salmon",
+    icon: "fish-outline",
+    messages: [
+      {
+        id: "m5",
+        role: "assistant",
+        content: "Let me share a delicious Miso Glazed Salmon recipe!",
+        timestamp: new Date(),
+      },
+    ],
+  },
+  {
+    id: "4",
+    title: "Truffle Mushroom Pizza",
+    icon: "pizza-outline",
+    messages: [
+      {
+        id: "m6",
+        role: "assistant",
+        content: "Here's a gourmet Truffle Mushroom Pizza recipe!",
+        timestamp: new Date(),
+      },
+    ],
+  },
+];
+
+const QUICK_ACTIONS = [
+  { label: "Vegan swap?", prompt: "How can I make this recipe vegan-friendly?" },
+  { label: "Wine pairing", prompt: "What wine pairs well with this dish?" },
+  { label: "Calories?", prompt: "What's the approximate calorie count for this recipe?" },
+  { label: "Save to Book", prompt: "Save this recipe to my cookbook" },
+];
+
+/* ------------------------------------------------------------------ */
+/*  Component                                                          */
+/* ------------------------------------------------------------------ */
+
 export default function RecipesTab() {
-  const [messages, setMessages] = useState<Message[]>([
-    {
-      id: "welcome",
-      role: "assistant",
-      content: "Hi! I'm your Recipe AI assistant. Click on food items from reviews to get recipe suggestions, or ask me anything about cooking!",
-      timestamp: new Date(),
-    },
-  ]);
+  const { width } = useWindowDimensions();
+  const isWide = width >= 700;
+  const [sidebarOpen, setSidebarOpen] = useState(isWide);
+  const [sessions, setSessions] = useState<ChatSession[]>(SAMPLE_SESSIONS);
+  const [activeSessionId, setActiveSessionId] = useState("1");
   const [inputText, setInputText] = useState("");
   const [loading, setLoading] = useState(false);
-  const flatListRef = useRef<FlatList>(null);
+  const scrollRef = useRef<ScrollView>(null);
 
-  // Check if we have items passed from a review
   useEffect(() => {
-    // This will be implemented when clicking items from reviews
-    // For now, it's a placeholder for the future functionality
-  }, []);
+    setSidebarOpen(isWide);
+  }, [isWide]);
+
+  const activeSession = sessions.find((s) => s.id === activeSessionId) ?? sessions[0];
+
+  const handleNewChat = () => {
+    const newId = Date.now().toString();
+    const newSession: ChatSession = {
+      id: newId,
+      title: "New Recipe",
+      icon: "restaurant-outline",
+      messages: [
+        {
+          id: `welcome-${newId}`,
+          role: "assistant",
+          content:
+            "Hi! I'm your Recipe AI assistant. Ask me anything about cooking, or tell me about a dish you loved at a restaurant!",
+          timestamp: new Date(),
+        },
+      ],
+    };
+    setSessions((prev) => [newSession, ...prev]);
+    setActiveSessionId(newId);
+    if (!isWide) setSidebarOpen(false);
+  };
+
+  const selectSession = (id: string) => {
+    setActiveSessionId(id);
+    if (!isWide) setSidebarOpen(false);
+  };
 
   const sendMessage = async () => {
     if (!inputText.trim()) return;
@@ -52,21 +198,33 @@ export default function RecipesTab() {
       timestamp: new Date(),
     };
 
-    setMessages((prev) => [...prev, userMessage]);
+    setSessions((prev) =>
+      prev.map((s) =>
+        s.id === activeSessionId
+          ? { ...s, messages: [...s.messages, userMessage] }
+          : s
+      )
+    );
     setInputText("");
     setLoading(true);
 
     try {
-      // TODO: Implement actual AI API call here
-      // For now, we'll simulate a response
+      // TODO: Implement actual AI API call
       setTimeout(() => {
         const assistantMessage: Message = {
           id: (Date.now() + 1).toString(),
           role: "assistant",
-          content: "I'll help you with that recipe! (This is a placeholder - AI integration coming soon)",
+          content:
+            "I'll help you with that recipe! (AI integration coming soon)",
           timestamp: new Date(),
         };
-        setMessages((prev) => [...prev, assistantMessage]);
+        setSessions((prev) =>
+          prev.map((s) =>
+            s.id === activeSessionId
+              ? { ...s, messages: [...s.messages, assistantMessage] }
+              : s
+          )
+        );
         setLoading(false);
       }, 1000);
     } catch (error) {
@@ -76,281 +234,658 @@ export default function RecipesTab() {
     }
   };
 
-  const generateRecipeFromItems = (items: string[]) => {
-    const itemsList = items.join(", ");
-    const prompt = `Can you suggest a recipe using these items: ${itemsList}?`;
-    setInputText(prompt);
-    // Auto-send the message
-    setTimeout(() => sendMessage(), 100);
-  };
+  /* ---------- Sidebar ---------- */
+  // On mobile, only render when open
+  if (!isWide && !sidebarOpen) {
+    var sidebarVisible = false;
+  } else {
+    var sidebarVisible = true;
+  }
 
-  const renderMessage = ({ item }: { item: Message }) => {
-    const isUser = item.role === "user";
+  const renderSidebar = () => {
+    if (!sidebarVisible) return null;
     return (
-      <View
-        style={[
-          styles.messageContainer,
-          isUser ? styles.userMessage : styles.assistantMessage,
-        ]}
-      >
-        <View style={styles.messageHeader}>
-          <Ionicons
-            name={isUser ? "person-circle" : "restaurant"}
-            size={24}
-            color={isUser ? "#007AFF" : "#34C759"}
-          />
-          <Text style={styles.messageRole}>
-            {isUser ? "You" : "Recipe AI"}
-          </Text>
-        </View>
-        <Text style={styles.messageContent}>{item.content}</Text>
-        {item.items && item.items.length > 0 && (
-          <View style={styles.itemsContainer}>
-            <Text style={styles.itemsLabel}>Items mentioned:</Text>
-            <View style={styles.itemsList}>
-              {item.items.map((foodItem, index) => (
-                <View key={index} style={styles.itemChip}>
-                  <Text style={styles.itemText}>{foodItem}</Text>
-                </View>
-              ))}
-            </View>
-          </View>
-        )}
+    <View
+      style={[
+        styles.sidebar,
+        !isWide && styles.sidebarMobile,
+      ]}
+    >
+      {/* New Recipe Button */}
+      <Pressable style={styles.newRecipeBtn} onPress={handleNewChat}>
+        <Ionicons name="add" size={20} color="#FFF" />
+        <Text style={styles.newRecipeBtnText}>New Recipe</Text>
+      </Pressable>
+
+      {/* History */}
+      <Text style={styles.historyLabel}>HISTORY</Text>
+
+      <ScrollView style={styles.historyList} showsVerticalScrollIndicator={false}>
+        {sessions.map((session) => {
+          const isActive = session.id === activeSessionId;
+          return (
+            <Pressable
+              key={session.id}
+              style={[
+                styles.historyItem,
+                isActive && styles.historyItemActive,
+              ]}
+              onPress={() => selectSession(session.id)}
+            >
+              <Ionicons
+                name={session.icon as any}
+                size={18}
+                color={isActive ? "#FF6B35" : "#999"}
+              />
+              <Text
+                style={[
+                  styles.historyItemText,
+                  isActive && styles.historyItemTextActive,
+                ]}
+                numberOfLines={1}
+              >
+                {session.title}
+              </Text>
+            </Pressable>
+          );
+        })}
+      </ScrollView>
+
+      {/* Bottom icons */}
+      <View style={styles.sidebarBottom}>
+        <Pressable
+          style={styles.sidebarBottomIcon}
+          onPress={() => setSidebarOpen(false)}
+        >
+          <Ionicons name="chevron-back" size={20} color="#999" />
+        </Pressable>
       </View>
+    </View>
     );
   };
 
-  return (
-    <SafeAreaView style={styles.container}>
-      <View style={styles.header}>
-        <Text style={styles.title}>Recipe AI</Text>
-        <Text style={styles.subtitle}>
-          Get recipe suggestions from review items
-        </Text>
+  /* ---------- Recipe Card ---------- */
+  const renderRecipeCard = (recipe: RecipeCard) => (
+    <View style={styles.recipeCard}>
+      {/* Image */}
+      <View style={styles.recipeImageContainer}>
+        {recipe.imageUrl ? (
+          <Image
+            source={{ uri: recipe.imageUrl }}
+            style={styles.recipeImage}
+            resizeMode="cover"
+          />
+        ) : (
+          <View style={styles.recipeImagePlaceholder}>
+            <Ionicons name="restaurant" size={48} color="#DDD" />
+          </View>
+        )}
+        <View style={styles.recipeImageOverlay}>
+          <Text style={styles.recipeImageTitle}>{recipe.title}</Text>
+        </View>
+        <Pressable style={styles.recipeCloseBtn}>
+          <Ionicons name="close-circle" size={26} color="#FF6B35" />
+        </Pressable>
       </View>
 
-      <KeyboardAvoidingView
-        behavior={Platform.OS === "ios" ? "padding" : "height"}
-        style={styles.chatContainer}
-      >
-        <FlatList
-          ref={flatListRef}
-          data={messages}
-          keyExtractor={(item) => item.id}
-          renderItem={renderMessage}
-          contentContainerStyle={styles.messagesList}
-          onContentSizeChange={() =>
-            flatListRef.current?.scrollToEnd({ animated: true })
-          }
-        />
-
-        <View style={styles.inputContainer}>
-          <TextInput
-            style={styles.textInput}
-            value={inputText}
-            onChangeText={setInputText}
-            placeholder="Ask about recipes or cooking tips..."
-            placeholderTextColor="#999"
-            multiline
-            editable={!loading}
-          />
-          <Pressable
-            style={[
-              styles.sendButton,
-              (!inputText.trim() || loading) && styles.sendButtonDisabled,
-            ]}
-            onPress={sendMessage}
-            disabled={!inputText.trim() || loading}
-          >
-            {loading ? (
-              <ActivityIndicator size="small" color="#FFF" />
-            ) : (
-              <Ionicons name="send" size={20} color="#FFF" />
-            )}
-          </Pressable>
+      {/* Ingredients */}
+      <View style={styles.recipeSection}>
+        <View style={styles.recipeSectionHeader}>
+          <Text style={styles.recipeSectionEmoji}>{"🧾"}</Text>
+          <Text style={styles.recipeSectionTitle}>WHAT YOU'LL NEED</Text>
         </View>
-      </KeyboardAvoidingView>
+        <View style={styles.ingredientsGrid}>
+          {recipe.ingredients.map((ing, i) => (
+            <View key={i} style={styles.ingredientItem}>
+              <Ionicons name="ellipse" size={6} color="#FF6B35" />
+              <Text style={styles.ingredientText}>{ing}</Text>
+            </View>
+          ))}
+        </View>
+      </View>
 
-      {/* Quick Actions */}
-      <View style={styles.quickActions}>
-        <Pressable
-          style={styles.quickActionButton}
-          onPress={() =>
-            setInputText("What's a quick and healthy dinner recipe?")
-          }
+      {/* Steps */}
+      <View style={styles.recipeSection}>
+        <View style={styles.recipeSectionHeader}>
+          <Text style={styles.recipeSectionEmoji}>{"🔥"}</Text>
+          <Text style={styles.recipeSectionTitle}>STEP-BY-STEP GUIDE</Text>
+        </View>
+        {recipe.steps.map((step, i) => (
+          <View key={i} style={styles.stepItem}>
+            <View style={styles.stepNumber}>
+              <Text style={styles.stepNumberText}>{i + 1}</Text>
+            </View>
+            <Text style={styles.stepText}>{step}</Text>
+          </View>
+        ))}
+      </View>
+    </View>
+  );
+
+  /* ---------- Chat Messages ---------- */
+  const renderMessages = () => (
+    <ScrollView
+      ref={scrollRef}
+      style={styles.chatScroll}
+      contentContainerStyle={styles.chatContent}
+      showsVerticalScrollIndicator={false}
+      onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
+    >
+      {activeSession.messages.map((msg) => {
+        if (msg.role === "assistant") {
+          return (
+            <View key={msg.id}>
+              {msg.content ? (
+                <View style={styles.assistantRow}>
+                  <View style={styles.avatarCircle}>
+                    <Ionicons name="restaurant" size={16} color="#FFF" />
+                  </View>
+                  <View style={styles.assistantBubble}>
+                    <Text style={styles.assistantText}>{msg.content}</Text>
+                  </View>
+                </View>
+              ) : null}
+              {msg.recipe && renderRecipeCard(msg.recipe)}
+            </View>
+          );
+        }
+
+        return (
+          <View key={msg.id} style={styles.userRow}>
+            <View style={styles.userBubble}>
+              <Text style={styles.userText}>{msg.content}</Text>
+            </View>
+          </View>
+        );
+      })}
+
+      {loading && (
+        <View style={styles.assistantRow}>
+          <View style={styles.avatarCircle}>
+            <Ionicons name="restaurant" size={16} color="#FFF" />
+          </View>
+          <View style={styles.assistantBubble}>
+            <ActivityIndicator size="small" color="#FF6B35" />
+          </View>
+        </View>
+      )}
+    </ScrollView>
+  );
+
+  /* ---------- Main Render ---------- */
+  return (
+    <SafeAreaView style={styles.container}>
+      <View style={styles.mainLayout}>
+        {/* Sidebar */}
+        {renderSidebar()}
+
+        {/* Overlay for mobile sidebar */}
+        {!isWide && sidebarOpen && (
+          <Pressable
+            style={styles.overlay}
+            onPress={() => setSidebarOpen(false)}
+          />
+        )}
+
+        {/* Chat Area */}
+        <KeyboardAvoidingView
+          behavior={Platform.OS === "ios" ? "padding" : "height"}
+          style={styles.chatArea}
+          keyboardVerticalOffset={90}
         >
-          <Text style={styles.quickActionText}>Quick Dinner</Text>
-        </Pressable>
-        <Pressable
-          style={styles.quickActionButton}
-          onPress={() =>
-            setInputText("How do I make homemade pasta?")
-          }
-        >
-          <Text style={styles.quickActionText}>Pasta Recipe</Text>
-        </Pressable>
-        <Pressable
-          style={styles.quickActionButton}
-          onPress={() =>
-            setInputText("What are some vegetarian protein sources?")
-          }
-        >
-          <Text style={styles.quickActionText}>Vegetarian</Text>
-        </Pressable>
+          {/* Chat Header */}
+          <View style={styles.chatHeader}>
+            {!isWide && (
+              <Pressable
+                style={styles.menuBtn}
+                onPress={() => setSidebarOpen(true)}
+              >
+                <Ionicons name="menu" size={24} color="#1A1A1A" />
+              </Pressable>
+            )}
+            <View style={styles.chatHeaderInfo}>
+              <Text style={styles.chatHeaderTitle} numberOfLines={1}>
+                {activeSession.title}
+              </Text>
+              <Text style={styles.chatHeaderSubtitle}>INSPIRED BY YOUR REVIEWS</Text>
+            </View>
+            <View style={styles.chatHeaderActions}>
+              <Pressable style={styles.headerActionBtn}>
+                <Ionicons name="heart-outline" size={22} color="#1A1A1A" />
+              </Pressable>
+              <Pressable style={styles.headerActionBtn}>
+                <Ionicons name="share-outline" size={22} color="#1A1A1A" />
+              </Pressable>
+            </View>
+          </View>
+
+          {/* Messages */}
+          {renderMessages()}
+
+          {/* Input Area */}
+          <View style={styles.inputArea}>
+            <View style={styles.inputRow}>
+              <Pressable style={styles.micBtn}>
+                <Ionicons name="mic-outline" size={22} color="#999" />
+              </Pressable>
+              <TextInput
+                style={styles.textInput}
+                value={inputText}
+                onChangeText={setInputText}
+                placeholder="Ask a question about this recipe..."
+                placeholderTextColor="#999"
+                onSubmitEditing={sendMessage}
+                returnKeyType="send"
+                editable={!loading}
+              />
+              <Pressable
+                style={[
+                  styles.sendButton,
+                  (!inputText.trim() || loading) && styles.sendButtonDisabled,
+                ]}
+                onPress={sendMessage}
+                disabled={!inputText.trim() || loading}
+              >
+                {loading ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <Ionicons name="send" size={18} color="#FFF" />
+                )}
+              </Pressable>
+            </View>
+
+            {/* Quick Actions */}
+            <ScrollView
+              horizontal
+              showsHorizontalScrollIndicator={false}
+              style={styles.quickActionsScroll}
+              contentContainerStyle={styles.quickActionsContent}
+            >
+              {QUICK_ACTIONS.map((action, i) => (
+                <Pressable
+                  key={i}
+                  style={styles.quickActionChip}
+                  onPress={() => setInputText(action.prompt)}
+                >
+                  <Text style={styles.quickActionText}>{action.label}</Text>
+                </Pressable>
+              ))}
+            </ScrollView>
+          </View>
+        </KeyboardAvoidingView>
       </View>
     </SafeAreaView>
   );
 }
 
+/* ------------------------------------------------------------------ */
+/*  Styles                                                             */
+/* ------------------------------------------------------------------ */
+
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#F8F9FA",
-  },
-  header: {
-    paddingHorizontal: 20,
-    paddingTop: 20,
-    paddingBottom: 10,
     backgroundColor: "#FFF",
-    borderBottomWidth: 1,
-    borderBottomColor: "#E5E5E7",
   },
-  title: {
-    fontSize: 28,
-    fontWeight: "700",
-    color: "#1A1A1A",
-    marginBottom: 4,
-  },
-  subtitle: {
-    fontSize: 14,
-    color: "#666",
-  },
-  chatContainer: {
+  mainLayout: {
     flex: 1,
+    flexDirection: "row",
   },
-  messagesList: {
-    padding: 16,
-    paddingBottom: 100,
+
+  /* ---- Sidebar ---- */
+  sidebar: {
+    width: 220,
+    backgroundColor: "#FAFAFA",
+    borderRightWidth: 1,
+    borderRightColor: "#F0F0F0",
+    paddingTop: 16,
+    paddingHorizontal: 12,
   },
-  messageContainer: {
-    marginBottom: 16,
-    padding: 12,
-    borderRadius: 12,
-    maxWidth: "85%",
+  sidebarMobile: {
+    position: "absolute",
+    left: 0,
+    top: 0,
+    bottom: 0,
+    zIndex: 10,
+    shadowColor: "#000",
+    shadowOffset: { width: 2, height: 0 },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 5,
   },
-  userMessage: {
-    alignSelf: "flex-end",
-    backgroundColor: "#007AFF",
+  overlay: {
+    position: "absolute",
+    top: 0,
+    left: 0,
+    right: 0,
+    bottom: 0,
+    backgroundColor: "rgba(0,0,0,0.3)",
+    zIndex: 5,
   },
-  assistantMessage: {
-    alignSelf: "flex-start",
-    backgroundColor: "#FFF",
-    borderWidth: 1,
-    borderColor: "#E5E5E7",
-  },
-  messageHeader: {
+  newRecipeBtn: {
     flexDirection: "row",
     alignItems: "center",
-    marginBottom: 8,
+    justifyContent: "center",
+    backgroundColor: "#FF6B35",
+    borderRadius: 10,
+    paddingVertical: 12,
+    paddingHorizontal: 12,
+    gap: 8,
+    marginBottom: 20,
   },
-  messageRole: {
-    marginLeft: 8,
-    fontSize: 12,
-    fontWeight: "600",
-    color: "#666",
-  },
-  messageContent: {
+  newRecipeBtnText: {
+    color: "#FFF",
     fontSize: 15,
-    lineHeight: 20,
+    fontWeight: "700",
+  },
+  historyLabel: {
+    fontSize: 11,
+    fontWeight: "700",
+    color: "#999",
+    letterSpacing: 0.5,
+    marginBottom: 10,
+    paddingLeft: 4,
+  },
+  historyList: {
+    flex: 1,
+  },
+  historyItem: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingVertical: 10,
+    paddingHorizontal: 8,
+    borderRadius: 8,
+    marginBottom: 2,
+    gap: 10,
+  },
+  historyItemActive: {
+    backgroundColor: "#FFF5F0",
+    borderLeftWidth: 3,
+    borderLeftColor: "#FF6B35",
+  },
+  historyItemText: {
+    fontSize: 14,
+    color: "#666",
+    flex: 1,
+  },
+  historyItemTextActive: {
+    color: "#FF6B35",
+    fontWeight: "600",
+  },
+  sidebarBottom: {
+    paddingVertical: 12,
+    borderTopWidth: 1,
+    borderTopColor: "#F0F0F0",
+    alignItems: "center",
+  },
+  sidebarBottomIcon: {
+    padding: 8,
+  },
+
+  /* ---- Chat Area ---- */
+  chatArea: {
+    flex: 1,
+    backgroundColor: "#FFF",
+  },
+  chatHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    borderBottomWidth: 1,
+    borderBottomColor: "#F0F0F0",
+    backgroundColor: "#FFF",
+  },
+  menuBtn: {
+    marginRight: 12,
+  },
+  chatHeaderInfo: {
+    flex: 1,
+  },
+  chatHeaderTitle: {
+    fontSize: 18,
+    fontWeight: "700",
     color: "#1A1A1A",
   },
-  itemsContainer: {
-    marginTop: 12,
-    padding: 8,
-    backgroundColor: "rgba(0,0,0,0.05)",
-    borderRadius: 8,
+  chatHeaderSubtitle: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#FF6B35",
+    letterSpacing: 0.5,
+    marginTop: 2,
   },
-  itemsLabel: {
-    fontSize: 12,
-    color: "#666",
-    marginBottom: 6,
-    fontWeight: "500",
-  },
-  itemsList: {
+  chatHeaderActions: {
     flexDirection: "row",
-    flexWrap: "wrap",
-    gap: 6,
+    gap: 12,
   },
-  itemChip: {
+  headerActionBtn: {
+    padding: 4,
+  },
+
+  /* ---- Messages ---- */
+  chatScroll: {
+    flex: 1,
+  },
+  chatContent: {
+    padding: 20,
+    paddingBottom: 20,
+  },
+  assistantRow: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginBottom: 16,
+    gap: 10,
+  },
+  avatarCircle: {
+    width: 32,
+    height: 32,
+    borderRadius: 16,
+    backgroundColor: "#FF6B35",
+    alignItems: "center",
+    justifyContent: "center",
+    marginTop: 2,
+  },
+  assistantBubble: {
+    flex: 1,
+    backgroundColor: "#F8F8F8",
+    borderRadius: 16,
+    borderTopLeftRadius: 4,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  assistantText: {
+    fontSize: 14,
+    lineHeight: 21,
+    color: "#1A1A1A",
+  },
+  userRow: {
+    flexDirection: "row",
+    justifyContent: "flex-end",
+    marginBottom: 16,
+  },
+  userBubble: {
+    maxWidth: "80%",
+    backgroundColor: "#FF6B35",
+    borderRadius: 16,
+    borderTopRightRadius: 4,
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+  },
+  userText: {
+    fontSize: 14,
+    lineHeight: 21,
+    color: "#FFF",
+  },
+
+  /* ---- Recipe Card ---- */
+  recipeCard: {
+    marginLeft: 42,
+    marginBottom: 16,
+    backgroundColor: "#FFF",
+    borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.06,
+    shadowRadius: 8,
+    elevation: 2,
+  },
+  recipeImageContainer: {
+    width: "100%",
+    height: 180,
+    position: "relative",
+  },
+  recipeImage: {
+    width: "100%",
+    height: "100%",
+  },
+  recipeImagePlaceholder: {
+    width: "100%",
+    height: "100%",
     backgroundColor: "#F0F0F0",
-    paddingHorizontal: 10,
-    paddingVertical: 4,
-    borderRadius: 12,
+    alignItems: "center",
+    justifyContent: "center",
   },
-  itemText: {
-    fontSize: 12,
-    color: "#333",
-  },
-  inputContainer: {
+  recipeImageOverlay: {
     position: "absolute",
     bottom: 0,
     left: 0,
     right: 0,
-    flexDirection: "row",
-    padding: 16,
-    backgroundColor: "#FFF",
+    paddingHorizontal: 16,
+    paddingVertical: 12,
+    backgroundColor: "rgba(0,0,0,0.45)",
+  },
+  recipeImageTitle: {
+    fontSize: 17,
+    fontWeight: "700",
+    color: "#FFF",
+  },
+  recipeCloseBtn: {
+    position: "absolute",
+    top: 8,
+    left: 8,
+  },
+  recipeSection: {
+    paddingHorizontal: 16,
+    paddingVertical: 14,
     borderTopWidth: 1,
-    borderTopColor: "#E5E5E7",
-    alignItems: "flex-end",
+    borderTopColor: "#F5F5F5",
+  },
+  recipeSectionHeader: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginBottom: 12,
+    gap: 6,
+  },
+  recipeSectionEmoji: {
+    fontSize: 14,
+  },
+  recipeSectionTitle: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#FF6B35",
+    letterSpacing: 0.5,
+  },
+  ingredientsGrid: {
+    flexDirection: "row",
+    flexWrap: "wrap",
+  },
+  ingredientItem: {
+    width: "50%",
+    flexDirection: "row",
+    alignItems: "center",
+    gap: 8,
+    paddingVertical: 5,
+    paddingRight: 8,
+  },
+  ingredientText: {
+    fontSize: 13,
+    color: "#333",
+    flex: 1,
+  },
+  stepItem: {
+    flexDirection: "row",
+    alignItems: "flex-start",
+    marginBottom: 14,
+    gap: 12,
+  },
+  stepNumber: {
+    width: 24,
+    height: 24,
+    borderRadius: 12,
+    backgroundColor: "#FFF5F0",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  stepNumberText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#FF6B35",
+  },
+  stepText: {
+    flex: 1,
+    fontSize: 13,
+    lineHeight: 20,
+    color: "#333",
+  },
+
+  /* ---- Input Area ---- */
+  inputArea: {
+    borderTopWidth: 1,
+    borderTopColor: "#F0F0F0",
+    backgroundColor: "#FFF",
+    paddingTop: 12,
+    paddingBottom: Platform.OS === "ios" ? 24 : 12,
+    paddingHorizontal: 16,
+  },
+  inputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#F5F5F5",
+    borderRadius: 24,
+    paddingHorizontal: 12,
+    gap: 8,
+  },
+  micBtn: {
+    padding: 6,
   },
   textInput: {
     flex: 1,
-    minHeight: 40,
-    maxHeight: 100,
-    backgroundColor: "#F2F2F7",
-    borderRadius: 20,
-    paddingHorizontal: 16,
-    paddingVertical: 10,
-    marginRight: 8,
-    fontSize: 15,
+    fontSize: 14,
     color: "#1A1A1A",
+    paddingVertical: 12,
   },
   sendButton: {
-    width: 40,
-    height: 40,
-    borderRadius: 20,
-    backgroundColor: "#007AFF",
+    width: 36,
+    height: 36,
+    borderRadius: 18,
+    backgroundColor: "#FF6B35",
     alignItems: "center",
     justifyContent: "center",
   },
   sendButtonDisabled: {
-    backgroundColor: "#C7C7CC",
+    backgroundColor: "#DDD",
   },
-  quickActions: {
-    position: "absolute",
-    bottom: 80,
-    left: 16,
-    right: 16,
-    flexDirection: "row",
-    justifyContent: "space-around",
-    backgroundColor: "#FFF",
-    padding: 8,
-    borderRadius: 12,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 2 },
-    shadowOpacity: 0.1,
-    shadowRadius: 4,
-    elevation: 3,
+  quickActionsScroll: {
+    marginTop: 10,
   },
-  quickActionButton: {
-    paddingHorizontal: 12,
-    paddingVertical: 8,
-    backgroundColor: "#F2F2F7",
+  quickActionsContent: {
+    gap: 8,
+    paddingRight: 8,
+  },
+  quickActionChip: {
+    paddingHorizontal: 14,
+    paddingVertical: 7,
     borderRadius: 16,
+    borderWidth: 1,
+    borderColor: "#E0E0E0",
+    backgroundColor: "#FFF",
   },
   quickActionText: {
-    fontSize: 13,
-    color: "#007AFF",
+    fontSize: 12,
+    color: "#333",
     fontWeight: "500",
   },
 });
