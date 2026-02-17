@@ -1,16 +1,36 @@
 import { Tabs } from "expo-router";
+import { View, StyleSheet, Platform, useWindowDimensions } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 export default function TabsLayout() {
+  const { width } = useWindowDimensions();
+  const barWidth = width * 0.75;
+  const sideMargin = (width - barWidth) / 2;
+
   return (
     <Tabs
       screenOptions={{
         tabBarActiveTintColor: "#FF6B35",
-        tabBarInactiveTintColor: "#8E8E93",
+        tabBarInactiveTintColor: "#C0C0C0",
+        tabBarShowLabel: false,
         tabBarStyle: {
+          position: "absolute",
+          bottom: Platform.OS === "ios" ? 28 : 16,
+          left: sideMargin,
+          right: sideMargin,
+          height: 64,
           backgroundColor: "#FFF",
-          borderTopWidth: 1,
-          borderTopColor: "#E5E5E7",
+          borderRadius: 32,
+          borderTopWidth: 0,
+          shadowColor: "#000",
+          shadowOffset: { width: 0, height: 4 },
+          shadowOpacity: 0.1,
+          shadowRadius: 12,
+          elevation: 8,
+        },
+        tabBarItemStyle: {
+          justifyContent: "center",
+          alignItems: "center",
         },
         headerStyle: {
           backgroundColor: "#FFF",
@@ -26,8 +46,8 @@ export default function TabsLayout() {
         options={{
           title: "Home",
           headerShown: false,
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="home" size={size} color={color} />
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="home" size={22} color={color} />
           ),
         }}
       />
@@ -36,17 +56,19 @@ export default function TabsLayout() {
         options={{
           title: "Search",
           headerShown: false,
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="search" size={size} color={color} />
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="search" size={22} color={color} />
           ),
         }}
       />
       <Tabs.Screen
         name="creator"
         options={{
-          title: "My Reviews",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="star" size={size} color={color} />
+          title: "Create",
+          tabBarIcon: () => (
+            <View style={styles.createButton}>
+              <Ionicons name="add" size={28} color="#FFF" />
+            </View>
           ),
         }}
       />
@@ -54,8 +76,8 @@ export default function TabsLayout() {
         name="recipes"
         options={{
           title: "Recipe AI",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="restaurant" size={size} color={color} />
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="bookmark" size={22} color={color} />
           ),
         }}
       />
@@ -63,11 +85,28 @@ export default function TabsLayout() {
         name="profile"
         options={{
           title: "Profile",
-          tabBarIcon: ({ color, size }) => (
-            <Ionicons name="person" size={size} color={color} />
+          tabBarIcon: ({ color }) => (
+            <Ionicons name="person-circle" size={26} color={color} />
           ),
         }}
       />
     </Tabs>
   );
 }
+
+const styles = StyleSheet.create({
+  createButton: {
+    width: 52,
+    height: 52,
+    borderRadius: 26,
+    backgroundColor: "#FF6B35",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 24,
+    shadowColor: "#FF6B35",
+    shadowOffset: { width: 0, height: 4 },
+    shadowOpacity: 0.35,
+    shadowRadius: 8,
+    elevation: 6,
+  },
+});
