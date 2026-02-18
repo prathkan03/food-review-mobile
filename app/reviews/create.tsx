@@ -13,6 +13,11 @@ import { Ionicons } from "@expo/vector-icons";
 import { router, useLocalSearchParams } from "expo-router";
 import { supabase } from "../../src/components/services/supabase";
 
+interface DishEntry {
+  name: string;
+  rating: number;
+}
+
 export default function CreateReview() {
   const params = useLocalSearchParams();
   const restaurantName = params.name as string;
@@ -22,37 +27,54 @@ export default function CreateReview() {
   const lat = params.lat ? parseFloat(params.lat as string) : undefined;
   const lng = params.lng ? parseFloat(params.lng as string) : undefined;
 
-  const [dishes, setDishes] = useState<string[]>(['']);
-  const [rating, setRating] = useState(0);
+  const [dishes, setDishes] = useState<DishEntry[]>([{ name: "", rating: 0 }]);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const addAnotherDish = () => {
-    setDishes(prev => [...prev, '']);
+    setDishes((prev) => [...prev, { name: "", rating: 0 }]);
   };
 
-  const updateDish = (index: number, name: string) => {
-    setDishes(prev => prev.map((dish, i) => i === index ? name : dish));
+  const updateDishName = (index: number, name: string) => {
+    setDishes((prev) =>
+      prev.map((d, i) => (i === index ? { ...d, name } : d))
+    );
+  };
+
+  const updateDishRating = (index: number, rating: number) => {
+    setDishes((prev) =>
+      prev.map((d, i) => (i === index ? { ...d, rating } : d))
+    );
   };
 
   const removeDish = (index: number) => {
-    setDishes(prev => prev.filter((_, i) => i !== index));
+    setDishes((prev) => prev.filter((_, i) => i !== index));
+  };
+
+  const getOverallRating = () => {
+    const rated = dishes.filter((d) => d.rating > 0);
+    if (rated.length === 0) return 0;
+    return Math.round(rated.reduce((sum, d) => sum + d.rating, 0) / rated.length);
   };
 
   const handleSubmit = async () => {
-    const filledDishes = dishes.filter(d => d.trim() !== '');
+    const filledDishes = dishes.filter((d) => d.name.trim() !== "");
     if (filledDishes.length === 0) {
       Alert.alert("Missing Info", "Please enter at least one dish name");
       return;
     }
-    if (rating === 0) {
-      Alert.alert("Missing Info", "Please rate your experience");
+    const unrated = filledDishes.filter((d) => d.rating === 0);
+    if (unrated.length > 0) {
+      Alert.alert("Missing Info", "Please rate all your dishes");
       return;
     }
 
     setIsSubmitting(true);
 
     try {
-      const { data: { session }, error: sessionError } = await supabase.auth.getSession();
+      const {
+        data: { session },
+        error: sessionError,
+      } = await supabase.auth.getSession();
 
       if (sessionError || !session) {
         Alert.alert("Error", "You must be logged in to submit a review");
@@ -67,18 +89,19 @@ export default function CreateReview() {
         address: restaurantAddress,
         lat,
         lng,
-        rating,
-        text: '',
-        dishes: filledDishes,
+        rating: getOverallRating(),
+        text: "",
+        dishes: filledDishes.map((d) => d.name),
       };
 
-      const API_URL = process.env.EXPO_PUBLIC_API_URL || 'http://localhost:8080';
+      const API_URL =
+        process.env.EXPO_PUBLIC_API_URL || "http://localhost:8080";
 
       const response = await fetch(`${API_URL}/reviews`, {
-        method: 'POST',
+        method: "POST",
         headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${session.access_token}`,
+          "Content-Type": "application/json",
+          Authorization: `Bearer ${session.access_token}`,
         },
         body: JSON.stringify(reviewData),
       });
@@ -93,24 +116,36 @@ export default function CreateReview() {
         }
         throw new Error(
           errorData.message ||
-          `Server error: ${response.status} ${response.statusText}`
+            `Server error: ${response.status} ${response.statusText}`
         );
       }
 
       await response.json();
 
       Alert.alert("Success", "Your review has been submitted!", [
-        { text: "OK", onPress: () => router.back() }
+        { text: "OK", onPress: () => router.back() },
       ]);
-
     } catch (error) {
       Alert.alert(
         "Error",
-        error instanceof Error ? error.message : "Failed to submit review. Please try again."
+        error instanceof Error
+          ? error.message
+          : "Failed to submit review. Please try again."
       );
     } finally {
       setIsSubmitting(false);
     }
+  };
+
+  const handleGetRecipe = (dishName: string) => {
+    router.push({
+      pathname: "/tabs/recipes",
+      params: {
+        dish: dishName,
+        restaurantName: restaurantName,
+        providerId: providerId,
+      },
+    });
   };
 
   return (
@@ -121,6 +156,7 @@ export default function CreateReview() {
           <Ionicons name="chevron-back" size={24} color="#FF6B35" />
         </Pressable>
         <View style={styles.headerCenter}>
+          <Text style={styles.stepLabel}>STEP 1 OF 3</Text>
           <Text style={styles.headerTitle}>Add Your Review</Text>
         </View>
         <Pressable onPress={() => router.back()}>
@@ -128,91 +164,118 @@ export default function CreateReview() {
         </Pressable>
       </View>
 
-      <ScrollView showsVerticalScrollIndicator={false}>
+      <ScrollView
+        showsVerticalScrollIndicator={false}
+        contentContainerStyle={{ paddingBottom: 40 }}
+      >
         {/* Restaurant Info */}
         <View style={styles.restaurantCard}>
           <View style={styles.restaurantImage}>
-            <Ionicons name="restaurant" size={32} color="#FF6B35" />
+            <Ionicons name="restaurant" size={28} color="#FF6B35" />
           </View>
           <View style={styles.restaurantInfo}>
-            <Text style={styles.restaurantName}>{restaurantName || "Restaurant Name"}</Text>
+            <Text style={styles.restaurantName}>
+              {restaurantName || "Restaurant Name"}
+            </Text>
             <View style={styles.locationRow}>
-              <Ionicons name="location-outline" size={14} color="#999" />
-              <Text style={styles.restaurantAddress}>{restaurantAddress || "Address"}</Text>
+              <Ionicons name="location" size={13} color="#FF6B35" />
+              <Text style={styles.restaurantAddress}>
+                {restaurantAddress || "Address"}
+              </Text>
             </View>
           </View>
         </View>
 
-        {/* What did you eat? */}
+        {/* Section Title */}
         <View style={styles.section}>
           <Text style={styles.sectionTitle}>What did you eat?</Text>
-          <Text style={styles.sectionSubtitle}>Add the dishes you ordered.</Text>
+          <Text style={styles.sectionSubtitle}>
+            Add the dishes you ordered and rate them.
+          </Text>
 
+          {/* Dish Cards */}
           {dishes.map((dish, index) => (
             <View key={index} style={styles.dishCard}>
-              <View style={styles.dishHeader}>
-                <Text style={styles.dishLabel}>DISH {index + 1}</Text>
-                {dishes.length > 1 && (
-                  <Pressable onPress={() => removeDish(index)}>
-                    <Ionicons name="close-circle" size={24} color="#CCC" />
-                  </Pressable>
-                )}
+              {/* Dish name input */}
+              <View style={styles.dishInputSection}>
+                <View style={styles.dishHeader}>
+                  <Text style={styles.dishLabel}>DISH NAME</Text>
+                  {dishes.length > 1 && (
+                    <Pressable onPress={() => removeDish(index)}>
+                      <Ionicons
+                        name="close-circle-outline"
+                        size={22}
+                        color="#CCC"
+                      />
+                    </Pressable>
+                  )}
+                </View>
+                <TextInput
+                  style={styles.dishInput}
+                  placeholder="e.g. Garlic Truffle Fries"
+                  placeholderTextColor="#CCC"
+                  value={dish.name}
+                  onChangeText={(text) => updateDishName(index, text)}
+                />
               </View>
-              <TextInput
-                style={styles.dishInput}
-                placeholder="e.g. Garlic Truffle Fries"
-                placeholderTextColor="#CCC"
-                value={dish}
-                onChangeText={(text) => updateDish(index, text)}
-              />
+
+              {/* Get Recipe button — only show if dish has a name */}
+              {dish.name.trim() !== "" && (
+                <Pressable
+                  style={styles.getRecipeBtn}
+                  onPress={() => handleGetRecipe(dish.name)}
+                >
+                  <Ionicons name="sparkles" size={14} color="#FF6B35" />
+                  <Text style={styles.getRecipeText}>Get Recipe</Text>
+                </Pressable>
+              )}
+
+              {/* Rating */}
+              <View style={styles.dishRatingSection}>
+                <Text style={styles.dishRatingLabel}>
+                  {dish.rating > 0 ? "How was it?" : "Tap to rate"}
+                </Text>
+                <View style={styles.starsRow}>
+                  {[1, 2, 3, 4, 5].map((star) => (
+                    <Pressable
+                      key={star}
+                      onPress={() => updateDishRating(index, star)}
+                    >
+                      <Ionicons
+                        name={star <= dish.rating ? "star" : "star-outline"}
+                        size={32}
+                        color={star <= dish.rating ? "#FF6B35" : "#DDD"}
+                      />
+                    </Pressable>
+                  ))}
+                </View>
+              </View>
             </View>
           ))}
 
           {/* Add Another Dish */}
           <Pressable style={styles.addDishButton} onPress={addAnotherDish}>
-            <Ionicons name="add-circle" size={24} color="#FF6B35" />
+            <Ionicons name="add-circle" size={22} color="#FF6B35" />
             <Text style={styles.addDishText}>Add another dish</Text>
           </Pressable>
         </View>
 
-        {/* Rating */}
-        <View style={styles.section}>
-          <Text style={styles.sectionTitle}>Overall Rating</Text>
-          <View style={styles.starsContainer}>
-            {[1, 2, 3, 4, 5].map((star) => (
-              <Pressable key={star} onPress={() => setRating(star)}>
-                <Ionicons
-                  name={star <= rating ? "star" : "star-outline"}
-                  size={40}
-                  color={star <= rating ? "#FF6B35" : "#DDD"}
-                />
-              </Pressable>
-            ))}
-          </View>
-        </View>
-
-        {/* Submit Button */}
+        {/* Continue Button */}
         <Pressable
-          style={[styles.continueButton, isSubmitting && styles.continueButtonDisabled]}
+          style={[
+            styles.continueButton,
+            isSubmitting && styles.continueButtonDisabled,
+          ]}
           onPress={handleSubmit}
           disabled={isSubmitting}
         >
           <Text style={styles.continueButtonText}>
-            {isSubmitting ? "Submitting..." : "Submit Review"}
+            {isSubmitting ? "Submitting..." : "Continue to Review"}
           </Text>
-          {!isSubmitting && <Ionicons name="arrow-forward" size={20} color="#FFF" />}
+          {!isSubmitting && (
+            <Ionicons name="arrow-forward" size={20} color="#FFF" />
+          )}
         </Pressable>
-
-        {/* Photo Hint */}
-        <View style={styles.photoHint}>
-          <View style={styles.photoIcon}>
-            <Ionicons name="camera" size={24} color="#FF6B35" />
-          </View>
-          <View style={styles.photoTextContainer}>
-            <Text style={styles.photoTitle}>Snap a photo?</Text>
-            <Text style={styles.photoSubtitle}>You can add photos in the next step</Text>
-          </View>
-        </View>
       </ScrollView>
     </SafeAreaView>
   );
@@ -239,6 +302,13 @@ const styles = StyleSheet.create({
   headerCenter: {
     alignItems: "center",
   },
+  stepLabel: {
+    fontSize: 10,
+    fontWeight: "700",
+    color: "#FF6B35",
+    letterSpacing: 1,
+    marginBottom: 2,
+  },
   headerTitle: {
     fontSize: 16,
     fontWeight: "600",
@@ -249,22 +319,24 @@ const styles = StyleSheet.create({
     color: "#FF6B35",
     fontWeight: "600",
   },
+
+  /* Restaurant Card */
   restaurantCard: {
     flexDirection: "row",
     backgroundColor: "#FFF",
     margin: 16,
     padding: 16,
-    borderRadius: 12,
+    borderRadius: 14,
     alignItems: "center",
   },
   restaurantImage: {
-    width: 56,
-    height: 56,
-    borderRadius: 8,
+    width: 52,
+    height: 52,
+    borderRadius: 26,
     backgroundColor: "#FFF5F0",
     justifyContent: "center",
     alignItems: "center",
-    marginRight: 12,
+    marginRight: 14,
   },
   restaurantInfo: {
     flex: 1,
@@ -284,9 +356,11 @@ const styles = StyleSheet.create({
     fontSize: 13,
     color: "#999",
   },
+
+  /* Section */
   section: {
     paddingHorizontal: 16,
-    marginBottom: 16,
+    marginBottom: 8,
   },
   sectionTitle: {
     fontSize: 20,
@@ -299,20 +373,27 @@ const styles = StyleSheet.create({
     color: "#666",
     marginBottom: 20,
   },
+
+  /* Dish Card */
   dishCard: {
     backgroundColor: "#FFF",
-    borderRadius: 12,
-    padding: 16,
-    marginBottom: 12,
+    borderRadius: 14,
+    padding: 18,
+    marginBottom: 14,
+    borderWidth: 1,
+    borderColor: "#F0F0F0",
+  },
+  dishInputSection: {
+    marginBottom: 8,
   },
   dishHeader: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginBottom: 8,
+    marginBottom: 6,
   },
   dishLabel: {
-    fontSize: 11,
+    fontSize: 10,
     fontWeight: "700",
     color: "#999",
     letterSpacing: 0.5,
@@ -321,24 +402,69 @@ const styles = StyleSheet.create({
     fontSize: 18,
     fontWeight: "600",
     color: "#1A1A1A",
-    paddingVertical: 8,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    paddingVertical: 6,
   },
-  starsContainer: {
+  getRecipeBtn: {
     flexDirection: "row",
-    justifyContent: "center",
-    gap: 8,
-    paddingVertical: 8,
+    alignItems: "center",
+    alignSelf: "flex-start",
+    backgroundColor: "#FFF5F0",
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    borderRadius: 14,
+    gap: 5,
+    marginBottom: 12,
   },
+  getRecipeText: {
+    fontSize: 12,
+    fontWeight: "700",
+    color: "#FF6B35",
+  },
+  dishRatingSection: {
+    alignItems: "center",
+    paddingTop: 4,
+    borderTopWidth: 1,
+    borderTopColor: "#F5F5F5",
+  },
+  dishRatingLabel: {
+    fontSize: 12,
+    color: "#BBB",
+    marginBottom: 8,
+    marginTop: 8,
+  },
+  starsRow: {
+    flexDirection: "row",
+    gap: 6,
+  },
+
+  /* Add Dish */
+  addDishButton: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    paddingVertical: 14,
+    borderRadius: 12,
+    borderWidth: 2,
+    borderColor: "#FF6B35",
+    borderStyle: "dashed",
+    gap: 8,
+    marginBottom: 16,
+  },
+  addDishText: {
+    fontSize: 15,
+    fontWeight: "600",
+    color: "#FF6B35",
+  },
+
+  /* Continue Button */
   continueButton: {
     flexDirection: "row",
     backgroundColor: "#FF6B35",
     marginHorizontal: 16,
-    marginTop: 8,
+    marginTop: 4,
     marginBottom: 16,
-    paddingVertical: 16,
-    borderRadius: 12,
+    paddingVertical: 18,
+    borderRadius: 30,
     justifyContent: "center",
     alignItems: "center",
     gap: 8,
@@ -350,53 +476,5 @@ const styles = StyleSheet.create({
   },
   continueButtonDisabled: {
     opacity: 0.6,
-  },
-  addDishButton: {
-    flexDirection: "row",
-    alignItems: "center",
-    justifyContent: "center",
-    marginBottom: 20,
-    paddingVertical: 16,
-    borderRadius: 12,
-    borderWidth: 2,
-    borderColor: "#FF6B35",
-    borderStyle: "dashed",
-    gap: 8,
-  },
-  addDishText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#FF6B35",
-  },
-  photoHint: {
-    flexDirection: "row",
-    backgroundColor: "#FFF5F0",
-    marginHorizontal: 16,
-    marginBottom: 32,
-    padding: 16,
-    borderRadius: 12,
-    alignItems: "center",
-  },
-  photoIcon: {
-    width: 48,
-    height: 48,
-    borderRadius: 8,
-    backgroundColor: "#FFE8DC",
-    justifyContent: "center",
-    alignItems: "center",
-    marginRight: 12,
-  },
-  photoTextContainer: {
-    flex: 1,
-  },
-  photoTitle: {
-    fontSize: 15,
-    fontWeight: "600",
-    color: "#1A1A1A",
-    marginBottom: 2,
-  },
-  photoSubtitle: {
-    fontSize: 13,
-    color: "#666",
   },
 });

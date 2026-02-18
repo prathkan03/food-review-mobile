@@ -16,6 +16,7 @@ import {
   useWindowDimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
+import { useLocalSearchParams } from "expo-router";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -148,6 +149,7 @@ const QUICK_ACTIONS = [
 
 export default function RecipesTab() {
   const { width } = useWindowDimensions();
+  const params = useLocalSearchParams();
   const isWide = width >= 700;
   const [sidebarOpen, setSidebarOpen] = useState(isWide);
   const [sessions, setSessions] = useState<ChatSession[]>(SAMPLE_SESSIONS);
@@ -155,10 +157,126 @@ export default function RecipesTab() {
   const [inputText, setInputText] = useState("");
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
+  const [hasAutoFetched, setHasAutoFetched] = useState(false);
 
   useEffect(() => {
     setSidebarOpen(isWide);
   }, [isWide]);
+
+  // Auto-fetch ingredients when navigated from "Get Recipe" button
+  useEffect(() => {
+    const dishName = params.dish as string | undefined;
+    const restaurantName = params.restaurantName as string | undefined;
+    const providerId = params.providerId as string | undefined;
+
+    if (dishName && restaurantName && !hasAutoFetched) {
+      setHasAutoFetched(true);
+      fetchIngredients(dishName, restaurantName, providerId);
+    }
+  }, [params.dish, params.restaurantName]);
+
+  const fetchIngredients = async (
+    dishName: string,
+    restaurantName: string,
+    providerId?: string
+  ) => {
+    const newId = Date.now().toString();
+    const newSession: ChatSession = {
+      id: newId,
+      title: dishName,
+      icon: "sparkles-outline",
+      messages: [
+        {
+          id: `user-${newId}`,
+          role: "user",
+          content: `Get the recipe for "${dishName}" from ${restaurantName}`,
+          timestamp: new Date(),
+        },
+      ],
+    };
+    setSessions((prev) => [newSession, ...prev]);
+    setActiveSessionId(newId);
+    if (!isWide) setSidebarOpen(false);
+    setLoading(true);
+
+    try {
+      const API_URL =
+        process.env.EXPO_PUBLIC_API_URL || "http://localhost:8080";
+      const response = await fetch(`${API_URL}/ingredients/lookup`, {
+        method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({
+          dish_name: dishName,
+          restaurant_name: restaurantName,
+          restaurant_provider_id: providerId || null,
+        }),
+      });
+
+      if (!response.ok) {
+        const errorData = await response.json().catch(() => ({ detail: "Unknown error" }));
+        const assistantMsg: Message = {
+          id: (Date.now() + 1).toString(),
+          role: "assistant",
+          content: `Sorry, I couldn't find the recipe for "${dishName}". ${errorData.detail || errorData.error || "Please try again later."}`,
+          timestamp: new Date(),
+        };
+        setSessions((prev) =>
+          prev.map((s) =>
+            s.id === newId ? { ...s, messages: [...s.messages, assistantMsg] } : s
+          )
+        );
+        return;
+      }
+
+      const data = await response.json();
+      const introMsg: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: `I found "${data.matched_dish}" on ${restaurantName}'s menu (${Math.round(data.match_confidence * 100)}% match). Here are the ingredients:`,
+        timestamp: new Date(),
+      };
+      const recipeMsg: Message = {
+        id: (Date.now() + 2).toString(),
+        role: "assistant",
+        content: "",
+        recipe: {
+          title: data.matched_dish,
+          ingredients: data.ingredients,
+          steps: [],
+        },
+        timestamp: new Date(),
+      };
+      const sourceMsg: Message = {
+        id: (Date.now() + 3).toString(),
+        role: "assistant",
+        content: data.source_url
+          ? `Source: ${data.source_url}${data.cached ? " (cached)" : ""}`
+          : "Ingredients extracted from the restaurant's menu.",
+        timestamp: new Date(),
+      };
+      setSessions((prev) =>
+        prev.map((s) =>
+          s.id === newId
+            ? { ...s, title: data.matched_dish, messages: [...s.messages, introMsg, recipeMsg, sourceMsg] }
+            : s
+        )
+      );
+    } catch (error) {
+      const errMsg: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: "Sorry, I couldn't connect to the recipe service. Please make sure the server is running and try again.",
+        timestamp: new Date(),
+      };
+      setSessions((prev) =>
+        prev.map((s) =>
+          s.id === newId ? { ...s, messages: [...s.messages, errMsg] } : s
+        )
+      );
+    } finally {
+      setLoading(false);
+    }
+  };
 
   const activeSession = sessions.find((s) => s.id === activeSessionId) ?? sessions[0];
 
