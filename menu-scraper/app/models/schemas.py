@@ -11,5 +11,6 @@ class IngredientsResponse(BaseModel):
     matched_dish: str
     match_confidence: float
     ingredients: list[str]
+    steps: list[str] = []
     source_url: str | None = None
     cached: bool = False

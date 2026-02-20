@@ -242,7 +242,7 @@ export default function RecipesTab() {
         recipe: {
           title: data.matched_dish,
           ingredients: data.ingredients,
-          steps: [],
+          steps: data.steps || [],
         },
         timestamp: new Date(),
       };
