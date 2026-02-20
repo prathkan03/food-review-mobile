@@ -1,14 +1,20 @@
 import json
+import logging
 
 import anthropic
 
 from app.config import settings
 
+logger = logging.getLogger(__name__)
+
 
 async def extract_dishes_and_ingredients(menu_text: str) -> list[dict]:
     """Use Claude to extract structured dish+ingredient data from raw menu text."""
     if not settings.anthropic_api_key:
+        logger.error("[LLM] No ANTHROPIC_API_KEY configured")
         return []
+
+    logger.info(f"[LLM] Sending {len(menu_text)} chars to Claude for extraction")
 
     client = anthropic.Anthropic(api_key=settings.anthropic_api_key)
 
@@ -32,6 +38,8 @@ Menu text:
     )
 
     raw = message.content[0].text.strip()
+    logger.info(f"[LLM] Claude response length: {len(raw)} chars")
+
     # Strip markdown code fences if present
     if raw.startswith("```"):
         raw = raw.split("\n", 1)[1] if "\n" in raw else raw[3:]
@@ -40,6 +48,9 @@ Menu text:
         raw = raw.strip()
 
     try:
-        return json.loads(raw)
-    except json.JSONDecodeError:
+        dishes = json.loads(raw)
+        logger.info(f"[LLM] Parsed {len(dishes)} dishes from response")
+        return dishes
+    except json.JSONDecodeError as e:
+        logger.error(f"[LLM] Failed to parse JSON: {e}\nRaw response (first 500 chars): {raw[:500]}")
         return []
