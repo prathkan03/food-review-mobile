@@ -38,7 +38,7 @@ export default function RootLayout() {
         router.replace("/auth");
       }
 
-      if (authed && inAuthGroup) {
+      if (authed && inAuthGroup && segments[1] !== "profile-setup" && segments[1] !== "register") {
         router.replace("/tabs");
       }
     }, [ready, authed, segments]);

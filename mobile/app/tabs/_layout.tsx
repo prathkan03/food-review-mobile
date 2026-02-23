@@ -65,6 +65,7 @@ export default function TabsLayout() {
         name="recipes"
         options={{
           title: "Recipe AI",
+          headerShown: false,
           tabBarIcon: ({ color }) => (
             <Ionicons name="bookmark" size={22} color={color} />
           ),
@@ -74,6 +75,7 @@ export default function TabsLayout() {
         name="profile"
         options={{
           title: "Profile",
+          headerShown: false,
           tabBarIcon: ({ color }) => (
             <Ionicons name="person-circle" size={26} color={color} />
           ),

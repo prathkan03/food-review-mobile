@@ -168,7 +168,7 @@ export default function ProfileTab() {
             key={star}
             name={star <= item.rating ? "star" : "star-outline"}
             size={13}
-            color={star <= item.rating ? "#1A1A1A" : "#CCC"}
+            color={star <= item.rating ? "#FF6B35" : "#CCC"}
           />
         ))}
         <Text style={styles.ratingScore}>{item.rating.toFixed(1)}</Text>
@@ -210,13 +210,15 @@ export default function ProfileTab() {
     <View>
       {/* Avatar */}
       <View style={styles.avatarSection}>
-        {profile?.avatarUrl ? (
-          <Image source={{ uri: profile.avatarUrl }} style={styles.avatar} />
-        ) : (
-          <View style={styles.avatarPlaceholder}>
-            <Ionicons name="person" size={36} color="#999" />
-          </View>
-        )}
+        <View style={styles.avatarRing}>
+          {profile?.avatarUrl ? (
+            <Image source={{ uri: profile.avatarUrl }} style={styles.avatar} />
+          ) : (
+            <View style={styles.avatarPlaceholder}>
+              <Ionicons name="person" size={36} color="#999" />
+            </View>
+          )}
+        </View>
         <Pressable style={styles.followButton}>
           <Text style={styles.followButtonText}>Follow</Text>
         </Pressable>
@@ -336,7 +338,7 @@ export default function ProfileTab() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFF",
+    backgroundColor: "#F8F4F0",
   },
   loadingContainer: {
     flex: 1,
@@ -355,6 +357,7 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingTop: 8,
     paddingBottom: 8,
+    backgroundColor: "#F8F4F0",
   },
   headerTitle: {
     fontSize: 17,
@@ -369,35 +372,46 @@ const styles = StyleSheet.create({
   avatarSection: {
     alignItems: "center",
     marginTop: 12,
+    backgroundColor: "#F8F4F0",
+  },
+  avatarRing: {
+    width: 88,
+    height: 88,
+    borderRadius: 44,
+    borderWidth: 3,
+    borderColor: "#FF6B35",
+    alignItems: "center",
+    justifyContent: "center",
   },
   avatar: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
+    width: 78,
+    height: 78,
+    borderRadius: 39,
   },
   avatarPlaceholder: {
-    width: 80,
-    height: 80,
-    borderRadius: 40,
-    backgroundColor: "#F0F0F0",
+    width: 78,
+    height: 78,
+    borderRadius: 39,
+    backgroundColor: "#E8E0D8",
     alignItems: "center",
     justifyContent: "center",
   },
   followButton: {
     backgroundColor: "#FF6B35",
-    paddingHorizontal: 28,
-    paddingVertical: 7,
-    borderRadius: 20,
-    marginTop: 10,
+    paddingHorizontal: 36,
+    paddingVertical: 9,
+    borderRadius: 24,
+    marginTop: 12,
   },
   followButtonText: {
     color: "#FFF",
-    fontSize: 13,
-    fontWeight: "600",
+    fontSize: 14,
+    fontWeight: "700",
   },
   nameSection: {
     alignItems: "center",
     marginTop: 12,
+    backgroundColor: "#F8F4F0",
   },
   displayName: {
     fontSize: 20,
@@ -416,17 +430,22 @@ const styles = StyleSheet.create({
     textAlign: "center",
     paddingHorizontal: 32,
     marginTop: 8,
+    backgroundColor: "#F8F4F0",
   },
 
   /* ---- Stats Card ---- */
   statsCard: {
     flexDirection: "row",
-    marginHorizontal: 24,
+    marginHorizontal: 16,
     marginTop: 16,
     paddingVertical: 14,
-    borderRadius: 12,
-    borderWidth: 1,
-    borderColor: "#E8E8E8",
+    borderRadius: 14,
+    backgroundColor: "#FFF",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 1,
   },
   statItem: {
     flex: 1,
@@ -456,7 +475,8 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     marginTop: 18,
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    borderBottomColor: "#E8E0D8",
+    backgroundColor: "#F8F4F0",
   },
   tab: {
     flex: 1,
@@ -479,10 +499,17 @@ const styles = StyleSheet.create({
 
   /* ---- Review Cards ---- */
   reviewCard: {
-    paddingHorizontal: 20,
-    paddingVertical: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    marginHorizontal: 16,
+    marginTop: 10,
+    paddingHorizontal: 16,
+    paddingVertical: 14,
+    backgroundColor: "#FFF",
+    borderRadius: 14,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 1,
   },
   reviewCardHeader: {
     flexDirection: "row",
@@ -490,7 +517,7 @@ const styles = StyleSheet.create({
     alignItems: "center",
   },
   reviewRestaurantName: {
-    fontSize: 16,
+    fontSize: 15,
     fontWeight: "700",
     color: "#1A1A1A",
     flex: 1,
@@ -535,7 +562,7 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
     gap: 20,
-    marginTop: 14,
+    marginTop: 12,
   },
   actionItem: {
     flexDirection: "row",

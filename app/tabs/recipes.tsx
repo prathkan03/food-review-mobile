@@ -12,7 +12,6 @@ import {
   ActivityIndicator,
   Alert,
   Image,
-  Dimensions,
   useWindowDimensions,
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
@@ -45,7 +44,7 @@ interface ChatSession {
 }
 
 /* ------------------------------------------------------------------ */
-/*  Sample data to match the screenshots                               */
+/*  Static data                                                        */
 /* ------------------------------------------------------------------ */
 
 const SAMPLE_SESSIONS: ChatSession[] = [
@@ -58,7 +57,7 @@ const SAMPLE_SESSIONS: ChatSession[] = [
         id: "m1",
         role: "assistant",
         content:
-          'Based on your glowing review of The Spice Hub, I\'ve reverse-engineered their signature Spicy Butter Chicken recipe for you. It features that same creamy texture and smoky spice profile you loved!',
+          "Based on your glowing review of The Spice Hub, I've reverse-engineered their signature Spicy Butter Chicken recipe for you. It features that same creamy texture and smoky spice profile you loved!",
         timestamp: new Date(),
       },
       {
@@ -102,8 +101,7 @@ const SAMPLE_SESSIONS: ChatSession[] = [
       {
         id: "m4",
         role: "assistant",
-        content:
-          "Here's an authentic Roman-style Carbonara recipe for you!",
+        content: "Here's an authentic Roman-style Carbonara recipe for you!",
         timestamp: new Date(),
       },
     ],
@@ -121,19 +119,6 @@ const SAMPLE_SESSIONS: ChatSession[] = [
       },
     ],
   },
-  {
-    id: "4",
-    title: "Truffle Mushroom Pizza",
-    icon: "pizza-outline",
-    messages: [
-      {
-        id: "m6",
-        role: "assistant",
-        content: "Here's a gourmet Truffle Mushroom Pizza recipe!",
-        timestamp: new Date(),
-      },
-    ],
-  },
 ];
 
 const QUICK_ACTIONS = [
@@ -141,6 +126,24 @@ const QUICK_ACTIONS = [
   { label: "Wine pairing", prompt: "What wine pairs well with this dish?" },
   { label: "Calories?", prompt: "What's the approximate calorie count for this recipe?" },
   { label: "Save to Book", prompt: "Save this recipe to my cookbook" },
+];
+
+const SUGGESTIONS = [
+  {
+    label: "Recipe from my last review",
+    icon: "chatbubble-ellipses-outline",
+    prompt: "Give me a recipe from my last restaurant review",
+  },
+  {
+    label: "Healthy alternatives",
+    icon: "shield-checkmark-outline",
+    prompt: "Suggest healthy alternatives to my favorite dishes",
+  },
+  {
+    label: "Quick 20-min meals",
+    icon: "timer-outline",
+    prompt: "Give me quick 20-minute meal ideas",
+  },
 ];
 
 /* ------------------------------------------------------------------ */
@@ -153,7 +156,7 @@ export default function RecipesTab() {
   const isWide = width >= 700;
   const [sidebarOpen, setSidebarOpen] = useState(isWide);
   const [sessions, setSessions] = useState<ChatSession[]>(SAMPLE_SESSIONS);
-  const [activeSessionId, setActiveSessionId] = useState("1");
+  const [activeSessionId, setActiveSessionId] = useState<string | null>(null);
   const [inputText, setInputText] = useState("");
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
@@ -163,7 +166,6 @@ export default function RecipesTab() {
     setSidebarOpen(isWide);
   }, [isWide]);
 
-  // Auto-fetch ingredients when navigated from "Get Recipe" button
   useEffect(() => {
     const dishName = params.dish as string | undefined;
     const restaurantName = params.restaurantName as string | undefined;
@@ -200,8 +202,7 @@ export default function RecipesTab() {
     setLoading(true);
 
     try {
-      const API_URL =
-        process.env.EXPO_PUBLIC_API_URL || "http://localhost:8080";
+      const API_URL = process.env.EXPO_PUBLIC_API_URL || "http://localhost:8080";
       const response = await fetch(`${API_URL}/ingredients/lookup`, {
         method: "POST",
         headers: { "Content-Type": "application/json" },
@@ -278,26 +279,14 @@ export default function RecipesTab() {
     }
   };
 
-  const activeSession = sessions.find((s) => s.id === activeSessionId) ?? sessions[0];
+  const activeSession = activeSessionId
+    ? sessions.find((s) => s.id === activeSessionId) ?? null
+    : null;
+
+  const isEmpty = activeSession === null;
 
   const handleNewChat = () => {
-    const newId = Date.now().toString();
-    const newSession: ChatSession = {
-      id: newId,
-      title: "New Recipe",
-      icon: "restaurant-outline",
-      messages: [
-        {
-          id: `welcome-${newId}`,
-          role: "assistant",
-          content:
-            "Hi! I'm your Recipe AI assistant. Ask me anything about cooking, or tell me about a dish you loved at a restaurant!",
-          timestamp: new Date(),
-        },
-      ],
-    };
-    setSessions((prev) => [newSession, ...prev]);
-    setActiveSessionId(newId);
+    setActiveSessionId(null);
     if (!isWide) setSidebarOpen(false);
   };
 
@@ -306,13 +295,58 @@ export default function RecipesTab() {
     if (!isWide) setSidebarOpen(false);
   };
 
+  const sendWithText = async (text: string) => {
+    if (!text.trim()) return;
+
+    const newId = Date.now().toString();
+    const newSession: ChatSession = {
+      id: newId,
+      title: text.length > 30 ? text.slice(0, 30) + "…" : text,
+      icon: "restaurant-outline",
+      messages: [
+        {
+          id: `user-${newId}`,
+          role: "user",
+          content: text,
+          timestamp: new Date(),
+        },
+      ],
+    };
+    setSessions((prev) => [newSession, ...prev]);
+    setActiveSessionId(newId);
+    if (!isWide) setSidebarOpen(false);
+    setLoading(true);
+
+    setTimeout(() => {
+      const assistantMessage: Message = {
+        id: (Date.now() + 1).toString(),
+        role: "assistant",
+        content: "I'll help you with that recipe! (AI integration coming soon)",
+        timestamp: new Date(),
+      };
+      setSessions((prev) =>
+        prev.map((s) =>
+          s.id === newId ? { ...s, messages: [...s.messages, assistantMessage] } : s
+        )
+      );
+      setLoading(false);
+    }, 1000);
+  };
+
   const sendMessage = async () => {
     if (!inputText.trim()) return;
+    const text = inputText;
+    setInputText("");
+
+    if (isEmpty) {
+      sendWithText(text);
+      return;
+    }
 
     const userMessage: Message = {
       id: Date.now().toString(),
       role: "user",
-      content: inputText,
+      content: text,
       timestamp: new Date(),
     };
 
@@ -323,17 +357,14 @@ export default function RecipesTab() {
           : s
       )
     );
-    setInputText("");
     setLoading(true);
 
     try {
-      // TODO: Implement actual AI API call
       setTimeout(() => {
         const assistantMessage: Message = {
           id: (Date.now() + 1).toString(),
           role: "assistant",
-          content:
-            "I'll help you with that recipe! (AI integration coming soon)",
+          content: "I'll help you with that recipe! (AI integration coming soon)",
           timestamp: new Date(),
         };
         setSessions((prev) =>
@@ -353,86 +384,58 @@ export default function RecipesTab() {
   };
 
   /* ---------- Sidebar ---------- */
-  // On mobile, only render when open
-  if (!isWide && !sidebarOpen) {
-    var sidebarVisible = false;
-  } else {
-    var sidebarVisible = true;
-  }
-
   const renderSidebar = () => {
-    if (!sidebarVisible) return null;
+    const visible = isWide || sidebarOpen;
+    if (!visible) return null;
     return (
-    <View
-      style={[
-        styles.sidebar,
-        !isWide && styles.sidebarMobile,
-      ]}
-    >
-      {/* New Recipe Button */}
-      <Pressable style={styles.newRecipeBtn} onPress={handleNewChat}>
-        <Ionicons name="add" size={20} color="#FFF" />
-        <Text style={styles.newRecipeBtnText}>New Recipe</Text>
-      </Pressable>
-
-      {/* History */}
-      <Text style={styles.historyLabel}>HISTORY</Text>
-
-      <ScrollView style={styles.historyList} showsVerticalScrollIndicator={false}>
-        {sessions.map((session) => {
-          const isActive = session.id === activeSessionId;
-          return (
-            <Pressable
-              key={session.id}
-              style={[
-                styles.historyItem,
-                isActive && styles.historyItemActive,
-              ]}
-              onPress={() => selectSession(session.id)}
-            >
-              <Ionicons
-                name={session.icon as any}
-                size={18}
-                color={isActive ? "#FF6B35" : "#999"}
-              />
-              <Text
-                style={[
-                  styles.historyItemText,
-                  isActive && styles.historyItemTextActive,
-                ]}
-                numberOfLines={1}
-              >
-                {session.title}
-              </Text>
-            </Pressable>
-          );
-        })}
-      </ScrollView>
-
-      {/* Bottom icons */}
-      <View style={styles.sidebarBottom}>
-        <Pressable
-          style={styles.sidebarBottomIcon}
-          onPress={() => setSidebarOpen(false)}
-        >
-          <Ionicons name="chevron-back" size={20} color="#999" />
+      <View style={[styles.sidebar, !isWide && styles.sidebarMobile]}>
+        <Pressable style={styles.newRecipeBtn} onPress={handleNewChat}>
+          <Ionicons name="add" size={20} color="#FFF" />
+          <Text style={styles.newRecipeBtnText}>New Recipe</Text>
         </Pressable>
+
+        <Text style={styles.historyLabel}>HISTORY</Text>
+
+        <ScrollView style={styles.historyList} showsVerticalScrollIndicator={false}>
+          {sessions.map((session) => {
+            const isActive = session.id === activeSessionId;
+            return (
+              <Pressable
+                key={session.id}
+                style={[styles.historyItem, isActive && styles.historyItemActive]}
+                onPress={() => selectSession(session.id)}
+              >
+                <Ionicons
+                  name={session.icon as any}
+                  size={18}
+                  color={isActive ? "#FF6B35" : "#999"}
+                />
+                <Text
+                  style={[styles.historyItemText, isActive && styles.historyItemTextActive]}
+                  numberOfLines={1}
+                >
+                  {session.title}
+                </Text>
+              </Pressable>
+            );
+          })}
+        </ScrollView>
+
+        <View style={styles.sidebarBottom}>
+          <Pressable style={styles.sidebarBottomIcon} onPress={() => setSidebarOpen(false)}>
+            <Ionicons name="chevron-back" size={20} color="#999" />
+          </Pressable>
+        </View>
       </View>
-    </View>
     );
   };
 
   /* ---------- Recipe Card ---------- */
   const renderRecipeCard = (recipe: RecipeCard) => (
     <View style={styles.recipeCard}>
-      {/* Image */}
       <View style={styles.recipeImageContainer}>
         {recipe.imageUrl ? (
-          <Image
-            source={{ uri: recipe.imageUrl }}
-            style={styles.recipeImage}
-            resizeMode="cover"
-          />
+          <Image source={{ uri: recipe.imageUrl }} style={styles.recipeImage} resizeMode="cover" />
         ) : (
           <View style={styles.recipeImagePlaceholder}>
             <Ionicons name="restaurant" size={48} color="#DDD" />
@@ -441,12 +444,8 @@ export default function RecipesTab() {
         <View style={styles.recipeImageOverlay}>
           <Text style={styles.recipeImageTitle}>{recipe.title}</Text>
         </View>
-        <Pressable style={styles.recipeCloseBtn}>
-          <Ionicons name="close-circle" size={26} color="#FF6B35" />
-        </Pressable>
       </View>
 
-      {/* Ingredients */}
       <View style={styles.recipeSection}>
         <View style={styles.recipeSectionHeader}>
           <Text style={styles.recipeSectionEmoji}>{"🧾"}</Text>
@@ -462,7 +461,6 @@ export default function RecipesTab() {
         </View>
       </View>
 
-      {/* Steps */}
       <View style={styles.recipeSection}>
         <View style={styles.recipeSectionHeader}>
           <Text style={styles.recipeSectionEmoji}>{"🔥"}</Text>
@@ -480,6 +478,38 @@ export default function RecipesTab() {
     </View>
   );
 
+  /* ---------- Empty State ---------- */
+  const renderEmptyState = () => (
+    <ScrollView
+      contentContainerStyle={styles.emptyStateContent}
+      showsVerticalScrollIndicator={false}
+    >
+      {/* Logo */}
+      <View style={styles.logoContainer}>
+        <Ionicons name="sparkles" size={36} color="#FFF" />
+      </View>
+
+      <Text style={styles.emptyTitle}>Gourmet AI</Text>
+      <Text style={styles.emptySubtitle}>Which restaurant dish should we cook today?</Text>
+
+      {/* Suggestion Cards */}
+      <View style={styles.suggestionsContainer}>
+        {SUGGESTIONS.map((s, i) => (
+          <Pressable
+            key={i}
+            style={styles.suggestionCard}
+            onPress={() => sendWithText(s.prompt)}
+          >
+            <View style={styles.suggestionIconWrap}>
+              <Ionicons name={s.icon as any} size={18} color="#FF6B35" />
+            </View>
+            <Text style={styles.suggestionText}>{s.label}</Text>
+          </Pressable>
+        ))}
+      </View>
+    </ScrollView>
+  );
+
   /* ---------- Chat Messages ---------- */
   const renderMessages = () => (
     <ScrollView
@@ -489,14 +519,14 @@ export default function RecipesTab() {
       showsVerticalScrollIndicator={false}
       onContentSizeChange={() => scrollRef.current?.scrollToEnd({ animated: true })}
     >
-      {activeSession.messages.map((msg) => {
+      {activeSession!.messages.map((msg) => {
         if (msg.role === "assistant") {
           return (
             <View key={msg.id}>
               {msg.content ? (
                 <View style={styles.assistantRow}>
                   <View style={styles.avatarCircle}>
-                    <Ionicons name="restaurant" size={16} color="#FFF" />
+                    <Ionicons name="sparkles" size={14} color="#FFF" />
                   </View>
                   <View style={styles.assistantBubble}>
                     <Text style={styles.assistantText}>{msg.content}</Text>
@@ -520,7 +550,7 @@ export default function RecipesTab() {
       {loading && (
         <View style={styles.assistantRow}>
           <View style={styles.avatarCircle}>
-            <Ionicons name="restaurant" size={16} color="#FFF" />
+            <Ionicons name="sparkles" size={14} color="#FFF" />
           </View>
           <View style={styles.assistantBubble}>
             <ActivityIndicator size="small" color="#FF6B35" />
@@ -534,84 +564,56 @@ export default function RecipesTab() {
   return (
     <SafeAreaView style={styles.container}>
       <View style={styles.mainLayout}>
-        {/* Sidebar */}
         {renderSidebar()}
 
-        {/* Overlay for mobile sidebar */}
         {!isWide && sidebarOpen && (
-          <Pressable
-            style={styles.overlay}
-            onPress={() => setSidebarOpen(false)}
-          />
+          <Pressable style={styles.overlay} onPress={() => setSidebarOpen(false)} />
         )}
 
-        {/* Chat Area */}
         <KeyboardAvoidingView
           behavior={Platform.OS === "ios" ? "padding" : "height"}
           style={styles.chatArea}
           keyboardVerticalOffset={90}
         >
-          {/* Chat Header */}
-          <View style={styles.chatHeader}>
-            {!isWide && (
-              <Pressable
-                style={styles.menuBtn}
-                onPress={() => setSidebarOpen(true)}
-              >
+          {/* Header — only shown when in a session */}
+          {!isEmpty && (
+            <View style={styles.chatHeader}>
+              {!isWide && (
+                <Pressable style={styles.menuBtn} onPress={() => setSidebarOpen(true)}>
+                  <Ionicons name="menu" size={24} color="#1A1A1A" />
+                </Pressable>
+              )}
+              <View style={styles.chatHeaderInfo}>
+                <Text style={styles.chatHeaderTitle} numberOfLines={1}>
+                  {activeSession!.title}
+                </Text>
+                <Text style={styles.chatHeaderSubtitle}>INSPIRED BY YOUR REVIEWS</Text>
+              </View>
+              <View style={styles.chatHeaderActions}>
+                <Pressable style={styles.headerActionBtn}>
+                  <Ionicons name="heart-outline" size={22} color="#1A1A1A" />
+                </Pressable>
+                <Pressable style={styles.headerActionBtn}>
+                  <Ionicons name="share-outline" size={22} color="#1A1A1A" />
+                </Pressable>
+              </View>
+            </View>
+          )}
+
+          {/* Menu button on empty state */}
+          {isEmpty && !isWide && (
+            <View style={styles.emptyHeader}>
+              <Pressable onPress={() => setSidebarOpen(true)}>
                 <Ionicons name="menu" size={24} color="#1A1A1A" />
               </Pressable>
-            )}
-            <View style={styles.chatHeaderInfo}>
-              <Text style={styles.chatHeaderTitle} numberOfLines={1}>
-                {activeSession.title}
-              </Text>
-              <Text style={styles.chatHeaderSubtitle}>INSPIRED BY YOUR REVIEWS</Text>
             </View>
-            <View style={styles.chatHeaderActions}>
-              <Pressable style={styles.headerActionBtn}>
-                <Ionicons name="heart-outline" size={22} color="#1A1A1A" />
-              </Pressable>
-              <Pressable style={styles.headerActionBtn}>
-                <Ionicons name="share-outline" size={22} color="#1A1A1A" />
-              </Pressable>
-            </View>
-          </View>
+          )}
 
-          {/* Messages */}
-          {renderMessages()}
+          {/* Body */}
+          {isEmpty ? renderEmptyState() : renderMessages()}
 
           {/* Input Area */}
           <View style={styles.inputArea}>
-            <View style={styles.inputRow}>
-              <Pressable style={styles.micBtn}>
-                <Ionicons name="mic-outline" size={22} color="#999" />
-              </Pressable>
-              <TextInput
-                style={styles.textInput}
-                value={inputText}
-                onChangeText={setInputText}
-                placeholder="Ask a question about this recipe..."
-                placeholderTextColor="#999"
-                onSubmitEditing={sendMessage}
-                returnKeyType="send"
-                editable={!loading}
-              />
-              <Pressable
-                style={[
-                  styles.sendButton,
-                  (!inputText.trim() || loading) && styles.sendButtonDisabled,
-                ]}
-                onPress={sendMessage}
-                disabled={!inputText.trim() || loading}
-              >
-                {loading ? (
-                  <ActivityIndicator size="small" color="#FFF" />
-                ) : (
-                  <Ionicons name="send" size={18} color="#FFF" />
-                )}
-              </Pressable>
-            </View>
-
             {/* Quick Actions */}
             <ScrollView
               horizontal
@@ -629,6 +631,33 @@ export default function RecipesTab() {
                 </Pressable>
               ))}
             </ScrollView>
+
+            <View style={styles.inputRow}>
+              <Pressable style={styles.attachBtn}>
+                <Ionicons name="attach-outline" size={22} color="#999" />
+              </Pressable>
+              <TextInput
+                style={styles.textInput}
+                value={inputText}
+                onChangeText={setInputText}
+                placeholder="Ask a question..."
+                placeholderTextColor="#BBBBBB"
+                onSubmitEditing={sendMessage}
+                returnKeyType="send"
+                editable={!loading}
+              />
+              <Pressable
+                style={[styles.sendButton, (!inputText.trim() || loading) && styles.sendButtonDisabled]}
+                onPress={sendMessage}
+                disabled={!inputText.trim() || loading}
+              >
+                {loading ? (
+                  <ActivityIndicator size="small" color="#FFF" />
+                ) : (
+                  <Ionicons name="arrow-forward" size={18} color="#FFF" />
+                )}
+              </Pressable>
+            </View>
           </View>
         </KeyboardAvoidingView>
       </View>
@@ -643,7 +672,7 @@ export default function RecipesTab() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFF",
+    backgroundColor: "#F8F4F0",
   },
   mainLayout: {
     flex: 1,
@@ -743,7 +772,11 @@ const styles = StyleSheet.create({
   /* ---- Chat Area ---- */
   chatArea: {
     flex: 1,
-    backgroundColor: "#FFF",
+    backgroundColor: "#F8F4F0",
+  },
+  emptyHeader: {
+    paddingHorizontal: 16,
+    paddingVertical: 14,
   },
   chatHeader: {
     flexDirection: "row",
@@ -751,8 +784,8 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     paddingVertical: 14,
     borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
-    backgroundColor: "#FFF",
+    borderBottomColor: "#EDE8E3",
+    backgroundColor: "#F8F4F0",
   },
   menuBtn: {
     marginRight: 12,
@@ -780,6 +813,73 @@ const styles = StyleSheet.create({
     padding: 4,
   },
 
+  /* ---- Empty State ---- */
+  emptyStateContent: {
+    flexGrow: 1,
+    alignItems: "center",
+    justifyContent: "center",
+    paddingHorizontal: 24,
+    paddingBottom: 32,
+  },
+  logoContainer: {
+    width: 80,
+    height: 80,
+    borderRadius: 20,
+    backgroundColor: "#FF6B35",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 20,
+    shadowColor: "#FF6B35",
+    shadowOffset: { width: 0, height: 6 },
+    shadowOpacity: 0.3,
+    shadowRadius: 12,
+    elevation: 6,
+  },
+  emptyTitle: {
+    fontSize: 26,
+    fontWeight: "800",
+    color: "#1A1A1A",
+    marginBottom: 10,
+  },
+  emptySubtitle: {
+    fontSize: 15,
+    color: "#888",
+    textAlign: "center",
+    lineHeight: 22,
+    marginBottom: 36,
+  },
+  suggestionsContainer: {
+    width: "100%",
+    gap: 12,
+  },
+  suggestionCard: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFF",
+    borderRadius: 14,
+    paddingVertical: 16,
+    paddingHorizontal: 16,
+    gap: 14,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 4,
+    elevation: 1,
+  },
+  suggestionIconWrap: {
+    width: 34,
+    height: 34,
+    borderRadius: 10,
+    backgroundColor: "#FFF5F0",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  suggestionText: {
+    fontSize: 15,
+    color: "#1A1A1A",
+    fontWeight: "500",
+  },
+
   /* ---- Messages ---- */
   chatScroll: {
     flex: 1,
@@ -805,7 +905,7 @@ const styles = StyleSheet.create({
   },
   assistantBubble: {
     flex: 1,
-    backgroundColor: "#F8F8F8",
+    backgroundColor: "#FFF",
     borderRadius: 16,
     borderTopLeftRadius: 4,
     paddingHorizontal: 16,
@@ -880,11 +980,6 @@ const styles = StyleSheet.create({
     fontWeight: "700",
     color: "#FFF",
   },
-  recipeCloseBtn: {
-    position: "absolute",
-    top: 8,
-    left: 8,
-  },
   recipeSection: {
     paddingHorizontal: 16,
     paddingVertical: 14,
@@ -951,44 +1046,13 @@ const styles = StyleSheet.create({
 
   /* ---- Input Area ---- */
   inputArea: {
-    borderTopWidth: 1,
-    borderTopColor: "#F0F0F0",
-    backgroundColor: "#FFF",
-    paddingTop: 12,
-    paddingBottom: Platform.OS === "ios" ? 24 : 12,
+    backgroundColor: "#F8F4F0",
+    paddingTop: 8,
+    paddingBottom: Platform.OS === "ios" ? 16 : 12,
     paddingHorizontal: 16,
-  },
-  inputRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    backgroundColor: "#F5F5F5",
-    borderRadius: 24,
-    paddingHorizontal: 12,
     gap: 8,
   },
-  micBtn: {
-    padding: 6,
-  },
-  textInput: {
-    flex: 1,
-    fontSize: 14,
-    color: "#1A1A1A",
-    paddingVertical: 12,
-  },
-  sendButton: {
-    width: 36,
-    height: 36,
-    borderRadius: 18,
-    backgroundColor: "#FF6B35",
-    alignItems: "center",
-    justifyContent: "center",
-  },
-  sendButtonDisabled: {
-    backgroundColor: "#DDD",
-  },
-  quickActionsScroll: {
-    marginTop: 10,
-  },
+  quickActionsScroll: {},
   quickActionsContent: {
     gap: 8,
     paddingRight: 8,
@@ -996,14 +1060,48 @@ const styles = StyleSheet.create({
   quickActionChip: {
     paddingHorizontal: 14,
     paddingVertical: 7,
-    borderRadius: 16,
+    borderRadius: 20,
     borderWidth: 1,
-    borderColor: "#E0E0E0",
+    borderColor: "#DDD",
     backgroundColor: "#FFF",
   },
   quickActionText: {
     fontSize: 12,
     color: "#333",
     fontWeight: "500",
+  },
+  inputRow: {
+    flexDirection: "row",
+    alignItems: "center",
+    backgroundColor: "#FFF",
+    borderRadius: 16,
+    paddingHorizontal: 12,
+    paddingVertical: 6,
+    gap: 8,
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.06,
+    shadowRadius: 4,
+    elevation: 2,
+  },
+  attachBtn: {
+    padding: 4,
+  },
+  textInput: {
+    flex: 1,
+    fontSize: 14,
+    color: "#1A1A1A",
+    paddingVertical: 8,
+  },
+  sendButton: {
+    width: 38,
+    height: 38,
+    borderRadius: 10,
+    backgroundColor: "#FF6B35",
+    alignItems: "center",
+    justifyContent: "center",
+  },
+  sendButtonDisabled: {
+    backgroundColor: "#DDD",
   },
 });

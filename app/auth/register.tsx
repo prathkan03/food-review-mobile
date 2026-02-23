@@ -53,15 +53,10 @@ export default function RegisterScreen() {
 
       if (error) {
         Alert.alert("Sign up failed.", error.message);
+        return;
       }
 
-      const token = data.session?.access_token;
-      console.log("Signed Up!");
-      console.log("Access Token:", token);
-
-      if (!data.session) {
-        Alert.alert("Check your email for the confirmation link.");
-      }
+      router.push("/auth/profile-setup");
     } catch (e: any) {
       Alert.alert("Unexpected error.", e?.message ?? "Something went wrong.");
     } finally {
@@ -261,11 +256,13 @@ const styles = StyleSheet.create({
     paddingHorizontal: 16,
     height: 56,
     marginBottom: 22,
+    backgroundColor: "#1A1A1A",
   },
   input: {
     flex: 1,
     fontSize: 16,
     color: "#FFF",
+    backgroundColor: "#1A1A1A",
   },
   termsText: {
     fontSize: 13,
