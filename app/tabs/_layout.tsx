@@ -18,7 +18,7 @@ export default function TabsLayout() {
         tabBarItemStyle: {
           justifyContent: "center",
           alignItems: "center",
-          paddingTop: 0,
+          paddingTop: 8,
           paddingBottom: 0,
         },
         headerStyle: {
@@ -93,6 +93,7 @@ const styles = StyleSheet.create({
     backgroundColor: "#FF6B35",
     alignItems: "center",
     justifyContent: "center",
+    transform: [{ translateY: -8 }],
     shadowColor: "#FF6B35",
     shadowOffset: { width: 0, height: 2 },
     shadowOpacity: 0.25,

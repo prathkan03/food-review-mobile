@@ -411,7 +411,7 @@ export default function SearchTab() {
 const styles = StyleSheet.create({
   container: {
     flex: 1,
-    backgroundColor: "#FFF",
+    backgroundColor: "#F8F4F0",
   },
   header: {
     flexDirection: "row",
@@ -436,11 +436,18 @@ const styles = StyleSheet.create({
     flex: 1,
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F5F5F5",
+    backgroundColor: "#FFF",
     borderRadius: 12,
     paddingHorizontal: 16,
     height: 48,
     gap: 8,
+    borderWidth: 1,
+    borderColor: "#E0D8D0",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 3,
+    elevation: 1,
   },
   searchInput: {
     flex: 1,
@@ -466,7 +473,7 @@ const styles = StyleSheet.create({
   sectionTitle: {
     fontSize: 12,
     fontWeight: "700",
-    color: "#999",
+    color: "#555",
     letterSpacing: 0.5,
   },
   sectionTitleLarge: {
@@ -493,15 +500,23 @@ const styles = StyleSheet.create({
   recentSearchChip: {
     flexDirection: "row",
     alignItems: "center",
-    backgroundColor: "#F5F5F5",
+    backgroundColor: "#FFF",
     borderRadius: 20,
     paddingHorizontal: 14,
     paddingVertical: 8,
     gap: 6,
+    borderWidth: 1,
+    borderColor: "#E0D8D0",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05,
+    shadowRadius: 2,
+    elevation: 1,
   },
   recentSearchText: {
     fontSize: 14,
-    color: "#333",
+    color: "#1A1A1A",
+    fontWeight: "500",
   },
   cuisineScroll: {
     paddingLeft: 20,
@@ -518,25 +533,39 @@ const styles = StyleSheet.create({
     justifyContent: "center",
     alignItems: "center",
     marginBottom: 8,
+    borderWidth: 2,
+    borderColor: "#E0D8D0",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 6,
+    elevation: 3,
   },
   cuisineEmoji: {
     fontSize: 28,
   },
   cuisineName: {
     fontSize: 13,
-    color: "#333",
-    fontWeight: "500",
+    color: "#1A1A1A",
+    fontWeight: "700",
   },
 
   /* ---- Trending Restaurant Cards ---- */
   trendingCard: {
     marginHorizontal: 20,
     marginBottom: 24,
+    backgroundColor: "#FFF",
+    borderRadius: 16,
+    overflow: "hidden",
+    shadowColor: "#000",
+    shadowOffset: { width: 0, height: 2 },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
   },
   trendingImageContainer: {
     width: "100%",
     height: 180,
-    borderRadius: 16,
     overflow: "hidden",
     position: "relative",
   },
@@ -547,7 +576,7 @@ const styles = StyleSheet.create({
   trendingImagePlaceholder: {
     width: "100%",
     height: "100%",
-    backgroundColor: "#F0F0F0",
+    backgroundColor: "#E8E0D8",
     justifyContent: "center",
     alignItems: "center",
   },
@@ -586,8 +615,7 @@ const styles = StyleSheet.create({
   trendingInfo: {
     paddingTop: 12,
     paddingBottom: 16,
-    borderBottomWidth: 1,
-    borderBottomColor: "#F0F0F0",
+    paddingHorizontal: 14,
   },
   trendingNameRow: {
     flexDirection: "row",
@@ -608,7 +636,7 @@ const styles = StyleSheet.create({
   },
   trendingCategories: {
     fontSize: 13,
-    color: "#999",
+    color: "#666",
     marginTop: 3,
   },
   trendingReviewRow: {
@@ -632,7 +660,7 @@ const styles = StyleSheet.create({
   },
   trendingReviewCount: {
     fontSize: 12,
-    color: "#999",
+    color: "#666",
   },
 
   /* ---- Search Results ---- */
