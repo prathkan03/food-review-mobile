@@ -81,6 +81,8 @@ public class RestaurantController {
             r.getId().toString(),
             r.getName(),
             r.getAddress(),
+            r.getPhotoUrl(),
+            r.getProviderId(),
             review.getRating(),
             review.getText(),
             review.getPhotoUrls(),

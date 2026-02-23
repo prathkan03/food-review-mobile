@@ -62,6 +62,7 @@ public class ReviewFeedService {
         return toReviewResponse(savedReview);
     }
 
+    @Transactional(readOnly = true)
     public List<ReviewResponse> getFriendsFeed(UUID userId) {
         // Get list of users that the current user follows
         List<UUID> followingIds = followRepository.findByFollower_Id(userId)
@@ -82,6 +83,7 @@ public class ReviewFeedService {
             .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public List<ReviewResponse> getUserReviews(UUID userId) {
         List<Review> reviews = reviewRepository.findByUser_IdOrderByCreatedAtDesc(userId);
         return reviews.stream()
@@ -89,6 +91,7 @@ public class ReviewFeedService {
             .collect(Collectors.toList());
     }
 
+    @Transactional(readOnly = true)
     public ReviewResponse getReview(UUID reviewId) {
         Review review = reviewRepository.findById(reviewId)
             .orElseThrow(() -> new RuntimeException("Review not found"));
@@ -104,23 +107,13 @@ public class ReviewFeedService {
             review.getRestaurant().getId().toString(),
             review.getRestaurant().getName(),
             review.getRestaurant().getAddress(),
+            review.getRestaurant().getPhotoUrl(),
+            review.getRestaurant().getProviderId(),
             review.getRating(),
             review.getText(),
             review.getPhotoUrls(),
-            extractItemsFromText(review.getText()),
+            review.getDishes() != null ? List.of(review.getDishes()) : new ArrayList<>(),
             review.getCreatedAt().toString()
         );
-    }
-
-    private List<String> extractItemsFromText(String text) {
-        // Simple extraction of food items from review text
-        // This could be enhanced with NLP or AI
-        if (text == null || text.isEmpty()) {
-            return new ArrayList<>();
-        }
-        
-        // For now, just return an empty list
-        // In a real implementation, you might parse the text for food items
-        return new ArrayList<>();
     }
 }

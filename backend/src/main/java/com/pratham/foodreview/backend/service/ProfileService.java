@@ -4,6 +4,7 @@ import com.pratham.foodreview.backend.dto.ReviewResponse;
 import com.pratham.foodreview.backend.entity.Review;
 import com.pratham.foodreview.backend.repo.ProfileRepository;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -19,6 +20,7 @@ public class ProfileService {
         this.profileRepository = profileRepository;
     }
 
+    @Transactional(readOnly = true)
     public List<ReviewResponse> getReviews(UUID userId) {
         List<Review> reviews = profileRepository.findReviewsByUserId(userId);
         return reviews.stream()
@@ -35,6 +37,8 @@ public class ProfileService {
             review.getRestaurant().getId().toString(),
             review.getRestaurant().getName(),
             review.getRestaurant().getAddress(),
+            review.getRestaurant().getPhotoUrl(),
+            review.getRestaurant().getProviderId(),
             review.getRating(),
             review.getText(),
             review.getPhotoUrls(),

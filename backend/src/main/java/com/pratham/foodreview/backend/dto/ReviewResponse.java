@@ -10,6 +10,8 @@ public record ReviewResponse(
   String restaurantId,
   String restaurantName,
   String restaurantAddress,
+  String restaurantPhotoUrl,
+  String restaurantProviderId,
   Integer rating,
   String text,
   List<String> photoUrls,

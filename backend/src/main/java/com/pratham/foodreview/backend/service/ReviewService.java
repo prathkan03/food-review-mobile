@@ -87,23 +87,13 @@ public class ReviewService {
             review.getRestaurant().getId().toString(),
             review.getRestaurant().getName(),
             review.getRestaurant().getAddress(),
+            review.getRestaurant().getPhotoUrl(),
+            review.getRestaurant().getProviderId(),
             review.getRating(),
             review.getText(),
             review.getPhotoUrls(),
-            extractItemsFromText(review.getText()),
+            review.getDishes() != null ? List.of(review.getDishes()) : new ArrayList<>(),
             review.getCreatedAt().toString()
         );
-    }
-
-    private List<String> extractItemsFromText(String text) {
-        // Simple extraction of food items from review text
-        // This could be enhanced with NLP or AI
-        if (text == null || text.isEmpty()) {
-            return new ArrayList<>();
-        }
-        
-        // For now, just return an empty list
-        // In a real implementation, you might parse the text for food items
-        return new ArrayList<>();
     }
 }
