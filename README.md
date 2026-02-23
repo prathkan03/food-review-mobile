@@ -1,6 +1,6 @@
 # Gourmet 🍽️
 
-An AI-augmented social platform for restaurant discovery and culinary exploration. Gourmet bridges the gap between dining out and home cooking by leveraging a **multi-service architecture** to turn restaurant experiences into actionable data.
+AI-driven social platform bridging dining and home cooking via a multi-service architecture and LLM-powered menu ingestion.
 
 ---
 
