@@ -12,6 +12,7 @@ import com.pratham.foodreview.backend.repo.RestaurantRepository;
 import com.pratham.foodreview.backend.repo.ReviewRepository;
 
 import java.util.ArrayList;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Map;
 import java.util.UUID;
@@ -86,7 +87,7 @@ public class RestaurantController {
             review.getRating(),
             review.getText(),
             review.getPhotoUrls(),
-            review.getDishes() != null ? List.of(review.getDishes()) : new ArrayList<>(),
+            review.getDishes() != null ? Arrays.asList(review.getDishes()) : new ArrayList<>(),
             review.getCreatedAt().toString()
         )).collect(Collectors.toList());
 

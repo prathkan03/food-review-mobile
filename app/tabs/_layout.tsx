@@ -1,12 +1,8 @@
 import { Tabs } from "expo-router";
-import { View, StyleSheet, Platform, useWindowDimensions } from "react-native";
+import { View, StyleSheet } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 
 export default function TabsLayout() {
-  const { width } = useWindowDimensions();
-  const barWidth = Math.min(width * 0.65, 280); // More compact, with max width
-  const sideMargin = (width - barWidth) / 2;
-
   return (
     <Tabs
       screenOptions={{
@@ -14,27 +10,16 @@ export default function TabsLayout() {
         tabBarInactiveTintColor: "#C0C0C0",
         tabBarShowLabel: false,
         tabBarStyle: {
-          position: "absolute",
-          bottom: Platform.OS === "ios" ? 28 : 16,
-          left: sideMargin,
-          right: sideMargin,
-          height: 56, // Slightly smaller height
+          height: 80,
           backgroundColor: "#FFF",
-          borderRadius: 28, // Adjusted to match new height
-          borderTopWidth: 0,
-          shadowColor: "#000",
-          shadowOffset: { width: 0, height: 4 },
-          shadowOpacity: 0.1,
-          shadowRadius: 12,
-          elevation: 8,
-          paddingHorizontal: 8, // Add horizontal padding
+          borderTopWidth: 1,
+          borderTopColor: "#E5E5E5",
         },
         tabBarItemStyle: {
-          flex: 1,
           justifyContent: "center",
           alignItems: "center",
-          paddingTop: 8,
-          paddingBottom: 8,
+          paddingTop: 0,
+          paddingBottom: 0,
         },
         headerStyle: {
           backgroundColor: "#FFF",
