@@ -24,8 +24,8 @@ Gourmet is engineered as a distributed system comprising three primary services:
 * Secured multi-tenant data access using **PostgreSQL Row-Level Security (RLS)** and **JWT-based authentication** via Supabase.
 
 ### **3. Mobile Performance & UX**
-* [cite_start]Integrated **Optimistic UI updates** for the threaded chat system, achieving a perceived latency of **~150ms**.
-* [cite_start]Reduced mobile authentication latency by **45%** through SQL execution plan tuning and connection pooling.
+* Integrated **Optimistic UI updates** for the threaded chat system, achieving a perceived latency of **~150ms**.
+* Reduced mobile authentication latency by **45%** through SQL execution plan tuning and connection pooling.
 
 ---
 
