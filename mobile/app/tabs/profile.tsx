@@ -226,9 +226,9 @@ export default function ProfileTab() {
 
       {/* Name + Username */}
       <View style={styles.nameSection}>
-        <Text style={styles.displayName}>
-          {profile?.displayName || profile?.username || "User"}
-        </Text>
+        {profile?.displayName ? (
+          <Text style={styles.displayName}>{profile.displayName}</Text>
+        ) : null}
         {profile?.username ? (
           <Text style={styles.username}>@{profile.username}</Text>
         ) : null}

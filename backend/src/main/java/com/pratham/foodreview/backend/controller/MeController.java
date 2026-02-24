@@ -6,6 +6,8 @@ import com.pratham.foodreview.backend.entity.Profile;
 import com.pratham.foodreview.backend.repo.FollowRepository;
 import com.pratham.foodreview.backend.repo.ProfileRepository;
 import com.pratham.foodreview.backend.repo.ReviewRepository;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.security.core.annotation.AuthenticationPrincipal;
 import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
@@ -18,6 +20,8 @@ import java.util.UUID;
 
 @RestController
 public class MeController {
+
+  private static final Logger log = LoggerFactory.getLogger(MeController.class);
 
   private final ProfileRepository profileRepository;
   private final ReviewRepository reviewRepository;
@@ -42,10 +46,17 @@ public class MeController {
       return p;
     });
 
+    log.info("[PATCH /me] userId={} request: username={} displayName={} bio={}",
+        userId, request.username(), request.displayName(), request.bio());
+
     if (request.username() != null) profile.setUsername(request.username().trim());
+    if (request.displayName() != null) profile.setDisplayName(request.displayName().trim());
     if (request.bio() != null) profile.setBio(request.bio().trim());
 
     profileRepository.save(profile);
+
+    log.info("[PATCH /me] saved: username={} displayName={} bio={}",
+        profile.getUsername(), profile.getDisplayName(), profile.getBio());
 
     long reviewCount = reviewRepository.countByUser_Id(userId);
     long followerCount = followRepository.countByFollowing_Id(userId);
@@ -67,6 +78,13 @@ public class MeController {
   public ProfileResponse me(@AuthenticationPrincipal Jwt jwt) {
     UUID userId = UUID.fromString(jwt.getSubject());
     Profile profile = profileRepository.findById(userId).orElse(null);
+
+    log.info("[GET /me] userId={} profileFound={} username={} displayName={} bio={}",
+        userId,
+        profile != null,
+        profile != null ? profile.getUsername() : "N/A",
+        profile != null ? profile.getDisplayName() : "N/A",
+        profile != null ? profile.getBio() : "N/A");
 
     long reviewCount = reviewRepository.countByUser_Id(userId);
     long followerCount = followRepository.countByFollowing_Id(userId);

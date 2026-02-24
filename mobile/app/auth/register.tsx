@@ -106,6 +106,8 @@ export default function RegisterScreen() {
                   onChangeText={setEmail}
                   autoCapitalize="none"
                   keyboardType="email-address"
+                  textContentType="emailAddress"
+                  autoComplete="email"
                   editable={!loading}
                 />
                 <Ionicons name="mail-outline" size={18} color="#888" />
@@ -121,6 +123,8 @@ export default function RegisterScreen() {
                   value={password}
                   onChangeText={setPassword}
                   secureTextEntry={!showPassword}
+                  textContentType="newPassword"
+                  autoComplete="new-password"
                   editable={!loading}
                 />
                 <Pressable onPress={() => setShowPassword(!showPassword)}>
@@ -142,6 +146,8 @@ export default function RegisterScreen() {
                   value={confirmPassword}
                   onChangeText={setConfirmPassword}
                   secureTextEntry={!showConfirm}
+                  textContentType="newPassword"
+                  autoComplete="new-password"
                   editable={!loading}
                 />
                 <Pressable onPress={() => setShowConfirm(!showConfirm)}>

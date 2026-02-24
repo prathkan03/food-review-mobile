@@ -204,7 +204,7 @@ export default function HomeTab() {
           <Text style={styles.title}>Gourmet</Text>
         </View>
         <View style={styles.headerRight}>
-          <Pressable style={styles.iconButton}>
+          <Pressable style={styles.iconButton} onPress={() => router.push("/find-foodies")}>
             <Ionicons name="search" size={20} color="#FF6B35" />
           </Pressable>
           <Pressable style={styles.iconButton}>

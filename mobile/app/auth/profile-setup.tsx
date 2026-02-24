@@ -16,6 +16,7 @@ import { supabase } from "../../src/components/services/supabase";
 
 export default function ProfileSetupScreen() {
   const [username, setUsername] = useState("");
+  const [displayName, setDisplayName] = useState("");
   const [bio, setBio] = useState("");
   const [loading, setLoading] = useState(false);
 
@@ -37,7 +38,7 @@ export default function ProfileSetupScreen() {
           "Content-Type": "application/json",
           Authorization: `Bearer ${token}`,
         },
-        body: JSON.stringify({ username: username.trim(), bio: bio.trim() }),
+        body: JSON.stringify({ username: username.trim(), displayName: displayName.trim(), bio: bio.trim() }),
       });
 
       if (!res.ok) {
@@ -92,6 +93,20 @@ export default function ProfileSetupScreen() {
                   value={username}
                   onChangeText={setUsername}
                   autoCapitalize="none"
+                  autoCorrect={false}
+                  editable={!loading}
+                  backgroundColor="#2A2A2A"
+                />
+              </View>
+
+              <Text style={styles.label}>Display Name</Text>
+              <View style={styles.inputContainer}>
+                <TextInput
+                  style={styles.input}
+                  placeholder="e.g., John Smith"
+                  placeholderTextColor="#555"
+                  value={displayName}
+                  onChangeText={setDisplayName}
                   autoCorrect={false}
                   editable={!loading}
                   backgroundColor="#2A2A2A"
