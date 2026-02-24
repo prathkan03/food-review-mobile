@@ -1,4 +1,4 @@
-# Gourmet 🍽️
+# Gourmet AI
 
 AI-powered social platform bridging dining and home cooking via multi-service architecture and LLM menu ingestion.
 
