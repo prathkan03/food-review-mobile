@@ -188,7 +188,7 @@ async def scrape_menu_page(website_url: str) -> ScrapeResult:
                 raise ScrapeError("download_failed", f"Failed to download PDF: {website_url}")
 
             try:
-                response = await page.goto(website_url, wait_until="networkidle",
+                response = await page.goto(website_url, wait_until="domcontentloaded",
                                            timeout=settings.scrape_timeout_ms)
             except PlaywrightTimeout:
                 raise ScrapeError("timeout", f"Page took too long to load: {website_url}")
@@ -206,6 +206,12 @@ async def scrape_menu_page(website_url: str) -> ScrapeResult:
 
             logger.info(f"[SCRAPER] Landed on: {page.url} (content-type: {content_type})")
 
+            # domcontentloaded fires fast; give late JS (menus, PDF viewers) a brief, capped moment.
+            try:
+                await page.wait_for_load_state("networkidle", timeout=4000)
+            except PlaywrightTimeout:
+                pass
+
             # If not already on a menu page, find and navigate to one
             if not is_menu_url:
                 pdf_urls, best_html = await _find_best_menu_link(page, website_url)
@@ -222,7 +228,7 @@ async def scrape_menu_page(website_url: str) -> ScrapeResult:
                 if best_html:
                     logger.info(f"[SCRAPER] Navigating to menu page: {best_html}")
                     try:
-                        menu_response = await page.goto(best_html, wait_until="networkidle",
+                        menu_response = await page.goto(best_html, wait_until="domcontentloaded",
                                                         timeout=settings.scrape_timeout_ms)
                     except PlaywrightTimeout:
                         raise ScrapeError("timeout", f"Menu page took too long to load: {best_html}")
@@ -233,9 +239,15 @@ async def scrape_menu_page(website_url: str) -> ScrapeResult:
                         if pdf_data:
                             return ScrapeResult(pdfs=[PdfItem(url=page.url, data=pdf_data)], source_url=page.url)
 
+                    # Let the menu page's late JS (PDF viewers, etc.) settle, capped.
+                    try:
+                        await page.wait_for_load_state("networkidle", timeout=4000)
+                    except PlaywrightTimeout:
+                        pass
+
             # On the menu page — collect PDFs from DOM anchors + network captures.
-            # The goto above already waits for networkidle, so a JS PDF viewer's
-            # network fetch has completed and been captured by _on_response.
+            # The settle wait above gives a JS PDF viewer time to fetch its PDF,
+            # which _on_response then captures.
             dom_pdf_urls = await _collect_pdf_links(page, page.url)
             all_pdf_urls = list(dict.fromkeys(dom_pdf_urls + captured_pdf_urls))
             if all_pdf_urls:

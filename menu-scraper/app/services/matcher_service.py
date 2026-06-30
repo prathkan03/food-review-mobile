@@ -20,7 +20,7 @@ def find_best_match(dish_name: str, extracted_dishes: list[dict]) -> tuple[dict 
             best_match = dish
 
     confidence = best_score / 100.0
-    if confidence < 0.4:
+    if confidence < 0.7:
         return None, confidence
 
     return best_match, confidence

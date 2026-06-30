@@ -1,0 +1,302 @@
+<!DOCTYPE html>
+
+<html class="light" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>Raj Shahhi Indian Restaurant Menu</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:ital,wght@0,200..800;1,200..800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<!-- Shared Components JSON Logic applied via Tailwind Config -->
+<script id="tailwind-config">
+      tailwind.config = {
+        darkMode: "class",
+        theme: {
+          extend: {
+            "colors": {
+                    "on-secondary-fixed": "#241912",
+                    "background": "#fff8f6",
+                    "inverse-surface": "#3a2e27",
+                    "on-tertiary-container": "#003852",
+                    "surface-container-high": "#fae4d9",
+                    "surface": "#fff8f6",
+                    "outline-variant": "#dec1b1",
+                    "outline": "#8b7265",
+                    "on-surface": "#241913",
+                    "inverse-primary": "#ffb68d",
+                    "secondary-fixed": "#f4ded2",
+                    "secondary-fixed-dim": "#d7c2b7",
+                    "on-secondary": "#ffffff",
+                    "error-container": "#ffdad6",
+                    "on-secondary-container": "#716158",
+                    "slate-500": "#64748b",
+                    "on-error-container": "#93000a",
+                    "background-dark": "#221710",
+                    "on-tertiary-fixed-variant": "#004c6c",
+                    "on-tertiary-fixed": "#001e2e",
+                    "surface-container-low": "#fff1eb",
+                    "on-primary-fixed": "#321200",
+                    "tertiary-container": "#00a7e9",
+                    "on-tertiary": "#ffffff",
+                    "on-primary": "#ffffff",
+                    "star-active": "#f47b25",
+                    "on-primary-container": "#592500",
+                    "on-surface-variant": "#574237",
+                    "surface-container-highest": "#f4ded4",
+                    "surface-bright": "#fff8f6",
+                    "error": "#ba1a1a",
+                    "tertiary-fixed": "#c7e7ff",
+                    "surface-tint": "#9a4600",
+                    "primary": "#9a4600",
+                    "primary-fixed": "#ffdbc9",
+                    "star-inactive": "#e2e8f0",
+                    "tertiary-fixed-dim": "#85cfff",
+                    "tertiary": "#00658f",
+                    "slate-900": "#0f172a",
+                    "on-secondary-fixed-variant": "#52443b",
+                    "secondary": "#6b5b52",
+                    "inverse-on-surface": "#ffede5",
+                    "surface-dim": "#ebd6cc",
+                    "on-primary-fixed-variant": "#763400",
+                    "surface-container-lowest": "#ffffff",
+                    "background-light": "#f8f7f5",
+                    "secondary-container": "#f4ded2",
+                    "surface-variant": "#f4ded4",
+                    "primary-fixed-dim": "#ffb68d",
+                    "surface-container": "#ffeae0",
+                    "primary-container": "#f47b25",
+                    "on-error": "#ffffff",
+                    "on-background": "#241913"
+            },
+            "borderRadius": {
+                    "DEFAULT": "0.25rem",
+                    "lg": "0.5rem",
+                    "xl": "0.75rem",
+                    "full": "9999px"
+            },
+            "spacing": {
+                    "stack-gap": "1rem",
+                    "section-gap": "2rem",
+                    "card-padding": "1.25rem",
+                    "container-margin": "1.25rem"
+            },
+            "fontFamily": {
+                    "body-lg": ["Plus Jakarta Sans"],
+                    "headline-xl": ["Plus Jakarta Sans"],
+                    "headline-md": ["Plus Jakarta Sans"],
+                    "label-caps": ["Plus Jakarta Sans"],
+                    "label-sm": ["Plus Jakarta Sans"],
+                    "body-md": ["Plus Jakarta Sans"]
+            },
+            "fontSize": {
+                    "body-lg": ["18px", {"lineHeight": "26px", "fontWeight": "600"}],
+                    "headline-xl": ["20px", {"lineHeight": "28px", "fontWeight": "700"}],
+                    "headline-md": ["18px", {"lineHeight": "24px", "fontWeight": "700"}],
+                    "label-caps": ["10px", {"lineHeight": "16px", "letterSpacing": "0.1em", "fontWeight": "700"}],
+                    "label-sm": ["12px", {"lineHeight": "16px", "fontWeight": "500"}],
+                    "body-md": ["14px", {"lineHeight": "20px", "fontWeight": "400"}]
+            }
+          },
+        },
+      }
+    </script>
+<style>
+        .material-symbols-outlined {
+            font-variation-settings: 'FILL' 0, 'wght' 400, 'GRAD' 0, 'opsz' 24;
+            display: inline-block;
+            vertical-align: middle;
+        }
+        .ios-shadow {
+            shadow-sm: 0 4px 6px -1px rgba(0, 0, 0, 0.05);
+        }
+        body {
+            background-color: #FFFDF5; /* Warm cream override as requested */
+            font-family: 'Plus Jakarta Sans', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+        }
+        .glass-nav {
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="text-on-surface antialiased min-h-screen pb-32">
+<!-- Top App Bar -->
+<header class="fixed top-0 w-full z-50 bg-surface/90 backdrop-blur-xl shadow-sm h-16 flex items-center px-container-margin">
+<div class="flex justify-between items-center w-full max-w-screen-xl mx-auto">
+<button class="text-primary hover:bg-surface-container-low transition-colors p-2 rounded-full active:scale-95 transition-transform">
+<span class="material-symbols-outlined" data-icon="arrow_back">arrow_back</span>
+</button>
+<h1 class="font-headline-xl text-headline-xl text-on-surface">Raj Shahhi Indian Restaurant</h1>
+<button class="text-on-surface-variant hover:bg-surface-container-low transition-colors p-2 rounded-full active:scale-95 transition-transform">
+<span class="material-symbols-outlined" data-icon="search">search</span>
+</button>
+</div>
+</header>
+<main class="mt-16 px-container-margin max-w-screen-xl mx-auto">
+<!-- Search & Filter Section -->
+<section class="py-section-gap space-y-6">
+<div class="relative group">
+<div class="absolute inset-y-0 left-4 flex items-center pointer-events-none text-on-surface-variant/50">
+<span class="material-symbols-outlined" data-icon="search">search</span>
+</div>
+<input class="w-full bg-white border border-slate-100 rounded-xl py-4 pl-12 pr-4 focus:ring-2 focus:ring-primary/20 focus:border-primary outline-none transition-all font-body-md text-on-surface shadow-sm" placeholder="Search for your favorite dish..." type="text"/>
+</div>
+<!-- Category Chips -->
+<div class="flex gap-3 overflow-x-auto no-scrollbar pb-2">
+<button class="bg-primary text-on-primary px-6 py-2 rounded-full font-label-sm whitespace-nowrap active:scale-95 transition-transform shadow-lg shadow-primary/20">All</button>
+<button class="bg-white text-on-surface-variant border border-slate-100 px-6 py-2 rounded-full font-label-sm whitespace-nowrap active:scale-95 transition-transform hover:bg-surface-container-low transition-colors">Curries</button>
+<button class="bg-white text-on-surface-variant border border-slate-100 px-6 py-2 rounded-full font-label-sm whitespace-nowrap active:scale-95 transition-transform hover:bg-surface-container-low transition-colors">Tandoori</button>
+<button class="bg-white text-on-surface-variant border border-slate-100 px-6 py-2 rounded-full font-label-sm whitespace-nowrap active:scale-95 transition-transform hover:bg-surface-container-low transition-colors">Breads</button>
+<button class="bg-white text-on-surface-variant border border-slate-100 px-6 py-2 rounded-full font-label-sm whitespace-nowrap active:scale-95 transition-transform hover:bg-surface-container-low transition-colors">Appetizers</button>
+</div>
+</section>
+<!-- Menu List -->
+<section class="space-y-stack-gap">
+<!-- Item 1 -->
+<div class="bg-white p-card-padding rounded-xl flex items-center justify-between shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05)] border border-slate-50 group hover:shadow-md transition-shadow">
+<div class="flex-1 pr-4">
+<div class="flex items-center gap-2 mb-1">
+<span class="text-green-600 material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">fiber_manual_record</span>
+<h3 class="font-body-lg text-body-lg text-on-surface">Chicken Tikka Masala</h3>
+</div>
+<p class="text-on-surface-variant font-body-md line-clamp-1 mb-2">Roasted marinated chicken chunks in a spiced creamy tomato sauce.</p>
+<p class="text-on-surface font-headline-md">$14.99</p>
+</div>
+<div class="flex flex-col items-end gap-3">
+<div class="w-20 h-20 rounded-lg overflow-hidden relative">
+<img class="w-full h-full object-cover" data-alt="A high-end, professionally lit overhead photograph of a creamy orange-red Chicken Tikka Masala served in a traditional copper handi. The dish is garnished with fresh green coriander leaves and a swirl of white cream. The background is a minimalist, warm-toned textured tabletop that aligns with the restaurant's premium branding. Soft ambient lighting creates natural shadows and highlights the rich texture of the sauce." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCdTvYA_LnKGmIYem06HuE5WpUl-UjjBDpfGLkonPRNGInLGaTxDkFLXuegrAhtm1WWLAI_GQLPRHBqmM9O0ZxT6wsqK0Ht8KiEvpp2ZexuXwfSKYjAZPuVpdcLUAb1Hb7CasRgZf7JySgeqfXT--K5bZutWUtfnzmTtF84UO1qBWLEYjoZ0yZJc92MiS8a4Cnq3cm1SHY-gK8J7tIbwJ3SU6KzkIdEXpG2FpebNyRtSkvjh_TK_ucE_tcYWbLkQl5UayIQYSBBfsHW"/>
+</div>
+<button class="text-primary font-label-sm uppercase tracking-wider font-bold flex items-center gap-1 group-hover:underline">
+                        View Recipe
+                        <span class="material-symbols-outlined text-[16px]" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+</div>
+<!-- Item 2 -->
+<div class="bg-white p-card-padding rounded-xl flex items-center justify-between shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05)] border border-slate-50 group hover:shadow-md transition-shadow">
+<div class="flex-1 pr-4">
+<div class="flex items-center gap-2 mb-1">
+<span class="text-green-600 material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">fiber_manual_record</span>
+<h3 class="font-body-lg text-body-lg text-on-surface">Paneer Makhani</h3>
+</div>
+<p class="text-on-surface-variant font-body-md line-clamp-1 mb-2">Soft paneer cubes simmered in a velvety buttery tomato gravy.</p>
+<p class="text-on-surface font-headline-md">$14.99</p>
+</div>
+<div class="flex flex-col items-end gap-3">
+<div class="w-20 h-20 rounded-lg overflow-hidden relative">
+<img class="w-full h-full object-cover" data-alt="A luxurious close-up of Paneer Makhani featuring golden cubes of paneer partially submerged in a smooth, vibrant orange sauce. The shot is styled with minimalist elegance, featuring a sprinkle of dried fenugreek leaves on top. The lighting is soft and directional, emphasizing the creaminess of the dish against a clean, warm-white ceramic bowl that fits the lifestyle-focused aesthetic." src="https://lh3.googleusercontent.com/aida-public/AB6AXuB8pIlKTEDeMUAaQ2RacJ_fbx7D5pFms_qMp_mhvj5S_JBs61TTc11lahs4ti26sfUx57r8XsMkqma3IBTK93AIyHox7y7bbMkERTIcmFljlbyA3w6yW9UW0e2wGPxeGtXd4MaWQeS3W0RQj8D-61XYRCOYcgA5DiZSv_NXIMR_QoUKZ5XuhDSiyY1ZNZyEZTbaC8TqG_dHsPW8DQD-LrttsXaKqFQC2eW6yqN-ZMNWWv7JMUyvl6IOYwGoSI_eKm8ikAdFfh7MykFt"/>
+</div>
+<button class="text-primary font-label-sm uppercase tracking-wider font-bold flex items-center gap-1 group-hover:underline">
+                        View Recipe
+                        <span class="material-symbols-outlined text-[16px]" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+</div>
+<!-- Item 3 -->
+<div class="bg-white p-card-padding rounded-xl flex items-center justify-between shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05)] border border-slate-50 group hover:shadow-md transition-shadow">
+<div class="flex-1 pr-4">
+<div class="flex items-center gap-2 mb-1">
+<span class="text-green-600 material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">fiber_manual_record</span>
+<h3 class="font-body-lg text-body-lg text-on-surface">Garlic Naan</h3>
+</div>
+<p class="text-on-surface-variant font-body-md line-clamp-1 mb-2">Leavened flatbread brushed with garlic butter and fresh parsley.</p>
+<p class="text-on-surface font-headline-md">$14.99</p>
+</div>
+<div class="flex flex-col items-end gap-3">
+<div class="w-20 h-20 rounded-lg overflow-hidden relative">
+<img class="w-full h-full object-cover" data-alt="Warm, blistered Garlic Naan bread stacked artistically in a wicker basket lined with a linen cloth. The bread is glistening with melted butter and studded with toasted garlic bits and fresh green herbs. The photography is bright and airy, capturing a premium café feel with soft morning light and a shallow depth of field that keeps the focus on the bread's texture." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCcHP2m_QRPzWl6sc6b0j4emNpjsucnR3C5zPp8S3-a5SvjTTkv2M2op10KMrwHvIT9FLMvJ2_b5ob3q7zaWFFT_d6gVKf4_FY6rqHdjAI4xLJ5lmpAmgfDHDpvemFxAH8cLfoENaClBggUWbbzI-s4wMiZLXtHrPwy7BPo9WzgylnbLQOacuWDrZ507cnUOfIBGwOHJlEPeGbuMwMIYXPHK0Tuz-zzdj8XBUt33vNLxFp2Ds8INsoeteeafvl4nSOQUm_Bvg2vaXj6"/>
+</div>
+<button class="text-primary font-label-sm uppercase tracking-wider font-bold flex items-center gap-1 group-hover:underline">
+                        View Recipe
+                        <span class="material-symbols-outlined text-[16px]" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+</div>
+<!-- Item 4 -->
+<div class="bg-white p-card-padding rounded-xl flex items-center justify-between shadow-[0_4px_6px_-1px_rgba(0,0,0,0.05)] border border-slate-50 group hover:shadow-md transition-shadow">
+<div class="flex-1 pr-4">
+<div class="flex items-center gap-2 mb-1">
+<span class="text-red-600 material-symbols-outlined text-[14px]" style="font-variation-settings: 'FILL' 1;">fiber_manual_record</span>
+<h3 class="font-body-lg text-body-lg text-on-surface">Lamb Rogan Josh</h3>
+</div>
+<p class="text-on-surface-variant font-body-md line-clamp-1 mb-2">Tender lamb slow-cooked in a rich yogurt and kashmiri chili gravy.</p>
+<p class="text-on-surface font-headline-md">$14.99</p>
+</div>
+<div class="flex flex-col items-end gap-3">
+<div class="w-20 h-20 rounded-lg overflow-hidden relative">
+<img class="w-full h-full object-cover" data-alt="An elegant, deep-red Lamb Rogan Josh served in a sophisticated dark stoneware bowl. The lamb pieces are tender and coated in a glossy, aromatic sauce, garnished with ginger juliennes and fresh mint. The composition is modern and minimal, with dramatic side lighting that highlights the steam and the rich colors of the spices, fitting a high-end food review platform." src="https://lh3.googleusercontent.com/aida-public/AB6AXuCnCojIX21H9zOa9O-QWv5uYqmSi7jeAjcCTcPVAebeshz-2nyh7SgsunSlN9sNsSe0FYmxRPVt7zGQoq_wK5qIElAErL6LKRM5XOCd5pae4FlgBssNl6ggWvLVophtPn6pATimPthVwEt81eGWu3bmCf8XbbDEDGykhjWThIXRhVI_vxmjOO71pAVtBFXORSyfqdWgEqvzGI_07dUYrfU3bTaG25ZeI8zT6TZK-81boUZpImJYKJjRFXpYc5owUwC8jutNaSAnviUk"/>
+</div>
+<button class="text-primary font-label-sm uppercase tracking-wider font-bold flex items-center gap-1 group-hover:underline">
+                        View Recipe
+                        <span class="material-symbols-outlined text-[16px]" data-icon="chevron_right">chevron_right</span>
+</button>
+</div>
+</div>
+</section>
+<!-- Promotion Section -->
+<section class="mt-section-gap mb-12">
+<div class="relative overflow-hidden rounded-3xl bg-secondary-container h-40 flex items-center px-8">
+<div class="relative z-10 w-2/3">
+<h4 class="font-headline-md text-on-secondary-container mb-2">Experience the Royalty</h4>
+<p class="font-body-md text-on-secondary-container/80">Get 20% off on your first order with code RAJ20</p>
+</div>
+<div class="absolute right-0 top-0 h-full w-1/3 overflow-hidden">
+<img class="w-full h-full object-cover opacity-30 mix-blend-multiply" data-alt="A background abstract pattern of stylized Indian mandalas and spices, rendered in a subtle, sophisticated palette of gold and deep orange. The design is modern and graphic, not literal, creating a sense of premium luxury and cultural heritage that complements the restaurant's high-end menu list." src="https://lh3.googleusercontent.com/aida-public/AB6AXuAsmRshUzLL0Eleyxs_xtuhZzTOQzeX2d3r5YzCHIxlx3UEQMXD8Cld7ZWaLVuvyOtFfndWWk3cAkpo91HUg3uP-dd6zsCKxWB_ht7Op-eogGx0U2-1F7sKyo9cCFduUnQQ4nywXM71HFQuxftggVeNznb9wh-JFX2VxMsSiIx70WV6XMA8rYHxpfYJ5WGAYjuFFSOJH5i51nJKnpjQXgDwGGkrYGEXTmVS8C_6MdPmoGLr_O6UitrIaLyzYSvHlTdtZyKoZPMFiPq6"/>
+</div>
+</div>
+</section>
+</main>
+<!-- Bottom Nav Bar - Floating Glassmorphic -->
+<nav class="fixed bottom-6 left-1/2 -translate-x-1/2 w-[92%] max-w-md z-50 flex justify-around items-center py-2 px-4 glass-nav rounded-full border border-white/20 shadow-[0_8px_32px_rgba(0,0,0,0.12)]">
+<!-- Menu Active -->
+<a class="flex flex-col items-center justify-center bg-primary text-on-primary rounded-full w-12 h-12 active:scale-90 transition-transform duration-200" href="#">
+<span class="material-symbols-outlined" data-icon="restaurant_menu">restaurant_menu</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-primary/10 transition-all rounded-full p-2 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="auto_awesome">auto_awesome</span>
+<span class="font-label-sm text-label-sm mt-0.5">Recipes</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-primary/10 transition-all rounded-full p-2 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="bookmark">bookmark</span>
+<span class="font-label-sm text-label-sm mt-0.5">Saved</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant hover:bg-primary/10 transition-all rounded-full p-2 active:scale-90 transition-transform" href="#">
+<span class="material-symbols-outlined" data-icon="person">person</span>
+<span class="font-label-sm text-label-sm mt-0.5">Profile</span>
+</a>
+</nav>
+<script>
+        // Micro-interactions for chips
+        const chips = document.querySelectorAll('.flex.gap-3.overflow-x-auto button');
+        chips.forEach(chip => {
+            chip.addEventListener('click', () => {
+                chips.forEach(c => {
+                    c.classList.remove('bg-primary', 'text-on-primary', 'shadow-lg', 'shadow-primary/20');
+                    c.classList.add('bg-white', 'text-on-surface-variant', 'border', 'border-slate-100');
+                });
+                chip.classList.add('bg-primary', 'text-on-primary', 'shadow-lg', 'shadow-primary/20');
+                chip.classList.remove('bg-white', 'text-on-surface-variant', 'border', 'border-slate-100');
+            });
+        });
+
+        // Simple parallax effect for images on scroll
+        window.addEventListener('scroll', () => {
+            const images = document.querySelectorAll('.group img');
+            const scrolled = window.pageYOffset;
+            images.forEach(img => {
+                const rect = img.getBoundingClientRect();
+                if (rect.top < window.innerHeight && rect.bottom > 0) {
+                    img.style.transform = `scale(1.1) translateY(${(rect.top - window.innerHeight / 2) * 0.05}px)`;
+                }
+            });
+        });
+    </script>
+</body></html>

@@ -1,8 +1,12 @@
+import asyncio
 import logging
 
 from fastapi import APIRouter, HTTPException
 
-from app.models.schemas import IngredientsRequest, IngredientsResponse
+from app.models.schemas import (
+    IngredientsRequest, IngredientsResponse,
+    MenuRequest, MenuResponse, MenuDish,
+)
 from app.services import cache_service, places_service, scraper_service, llm_service, matcher_service
 from app.services.scraper_service import ScrapeError
 
@@ -99,3 +103,57 @@ async def lookup_ingredients(req: IngredientsRequest):
     detail = f"Dish '{req.dish_name}' not found on the menu. Searched: {', '.join(sources) or 'no content found'}"
     logger.error(f"[NOT FOUND] {detail}")
     raise HTTPException(status_code=404, detail=detail)
+
+
+@router.post("/menu", response_model=MenuResponse)
+async def get_menu(req: MenuRequest):
+    """Extract the FULL menu (all dishes) for a restaurant — used to populate
+    the canonical dish list. Stateless: caching is owned by the backend DB."""
+    logger.info(f"[MENU REQUEST] restaurant='{req.restaurant_name}', provider_id='{req.restaurant_provider_id}'")
+
+    # 1. Resolve the restaurant website
+    website_url = await places_service.get_website_url(
+        req.restaurant_provider_id, req.restaurant_name
+    )
+    if not website_url:
+        raise HTTPException(status_code=404, detail=f"Could not find website for restaurant: {req.restaurant_name}")
+    logger.info(f"[MENU][PLACES] Resolved website: {website_url}")
+
+    # 2. Scrape the menu page (PDFs + text)
+    try:
+        result = await scraper_service.scrape_menu_page(website_url)
+    except ScrapeError as e:
+        logger.error(f"[MENU][SCRAPE FAILED] reason={e.reason}, detail={e.detail}")
+        raise HTTPException(status_code=422, detail=f"[{e.reason}] {e.detail}")
+    except Exception as e:
+        logger.error(f"[MENU][SCRAPE FAILED] {type(e).__name__}: {e}")
+        raise HTTPException(status_code=502, detail=f"Failed to scrape restaurant menu: {e}")
+
+    source_url = result.source_url or website_url
+
+    # 3. Extract ALL dishes (not a targeted single-dish search)
+    raw_dishes: list[dict] = []
+    if result.pdfs:
+        pdf_results = await asyncio.gather(
+            *[llm_service.extract_dishes_from_pdf(pdf.data) for pdf in result.pdfs]
+        )
+        for dishes in pdf_results:
+            raw_dishes.extend(dishes)
+    if result.text:
+        raw_dishes.extend(await llm_service.extract_dishes_and_ingredients(result.text))
+
+    # 4. Dedupe by dish name (case-insensitive), keeping the first seen
+    seen: set[str] = set()
+    dishes: list[MenuDish] = []
+    for d in raw_dishes:
+        name = (d.get("dish") or "").strip()
+        if not name or name.lower() in seen:
+            continue
+        seen.add(name.lower())
+        dishes.append(MenuDish(dish=name, ingredients=d.get("ingredients", [])))
+
+    if not dishes:
+        raise HTTPException(status_code=404, detail=f"No dishes could be extracted from {source_url}")
+
+    logger.info(f"[MENU] Extracted {len(dishes)} dishes from {source_url}")
+    return MenuResponse(dishes=dishes, source_url=source_url)

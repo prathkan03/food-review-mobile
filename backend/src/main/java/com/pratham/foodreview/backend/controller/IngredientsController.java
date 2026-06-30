@@ -35,14 +35,25 @@ public class IngredientsController {
     @PostMapping("/lookup")
     public ResponseEntity<?> lookupIngredients(@RequestBody Map<String, Object> request) {
         String providerId = (String) request.get("restaurant_provider_id");
-        Optional<Restaurant> restaurant = restaurantRepository.findByProviderAndProviderId("google", providerId);
-
-        if (restaurant.isEmpty()){
-            return ResponseEntity.badRequest().body(Map.of("error", "restaurant not found"));
+        if (providerId == null) {
+            return ResponseEntity.badRequest().body(Map.of("error", "missing provider id"));
         }
-       
+
+        // Find the restaurant, or create it on the fly — it may not have been reviewed yet,
+        // in which case it won't exist in our DB yet.
+        Restaurant restaurant = restaurantRepository
+            .findByProviderAndProviderId("google", providerId)
+            .orElseGet(() -> {
+                Restaurant r = new Restaurant();
+                r.setProvider("google");
+                r.setProviderId(providerId);
+                r.setName((String) request.get("restaurant_name"));
+                r.setCreatedAt(OffsetDateTime.now());
+                return restaurantRepository.save(r);
+            });
+
         String dishName = (String) request.get("dish_name");
-        UUID restaurantId = restaurant.get().getId();
+        UUID restaurantId = restaurant.getId();
         Optional<Dish> existing = dishRepository.findByRestaurant_IdAndDishName(restaurantId, dishName);
         
         if (existing.isPresent()){
@@ -73,8 +84,10 @@ public class IngredientsController {
             List<String> steps = (List<String>) body.get("steps");
 
             Dish dish = new Dish();
-            dish.setRestaurant(restaurant.get());
-            dish.setDishName(matchedDish);
+            dish.setRestaurant(restaurant);
+            // Store under the SAME key we look up by (the request's dish_name),
+            // otherwise repeat lookups never hit the cache and we insert duplicates.
+            dish.setDishName(dishName);
             dish.setIngredients(ingredients);
             dish.setSteps(steps);
             dish.setCreatedAt(OffsetDateTime.now());
