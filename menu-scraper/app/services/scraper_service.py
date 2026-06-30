@@ -211,16 +211,13 @@ async def scrape_menu_page(website_url: str) -> ScrapeResult:
                 pdf_urls, best_html = await _find_best_menu_link(page, website_url)
 
                 # If there are PDF links on the homepage, collect them
-                all_pdfs: list[PdfItem] = []
-                for pdf_url in pdf_urls:
-                    pdf_data = await _download_pdf(pdf_url)
-                    if pdf_data:
-                        all_pdfs.append(PdfItem(url=pdf_url, data=pdf_data))
-
-                if all_pdfs:
-                    logger.info(f"[SCRAPER] Collected {len(all_pdfs)} PDFs from homepage")
-                    return ScrapeResult(pdfs=all_pdfs, source_url=website_url)
-
+                homepage_pdf_urls = list(dict.fromkeys(pdf_urls + captured_pdf_urls))
+                if homepage_pdf_urls:
+                    all_pdfs = await _download_captured(homepage_pdf_urls)
+                    if all_pdfs:
+                        logger.info(f"[SCRAPER] Collected {len(all_pdfs)} PDFs from homepage")
+                        return ScrapeResult(pdfs=all_pdfs, source_url=website_url)
+                
                 # Otherwise navigate to the best HTML menu link
                 if best_html:
                     logger.info(f"[SCRAPER] Navigating to menu page: {best_html}")
@@ -236,21 +233,21 @@ async def scrape_menu_page(website_url: str) -> ScrapeResult:
                         if pdf_data:
                             return ScrapeResult(pdfs=[PdfItem(url=page.url, data=pdf_data)], source_url=page.url)
 
-            # Now on the menu page — check for PDF links here too
-            page_pdf_urls = await _collect_pdf_links(page, page.url)
-            if page_pdf_urls:
-                logger.info(f"[SCRAPER] Found {len(page_pdf_urls)} PDF links on menu page")
-                all_pdfs: list[PdfItem] = []
-                for pdf_url in page_pdf_urls:
-                    pdf_data = await _download_pdf(pdf_url)
-                    if pdf_data:
-                        all_pdfs.append(PdfItem(url=pdf_url, data=pdf_data))
+            # On the menu page — collect PDFs from DOM anchors + network captures.
+            # The goto above already waits for networkidle, so a JS PDF viewer's
+            # network fetch has completed and been captured by _on_response.
+            dom_pdf_urls = await _collect_pdf_links(page, page.url)
+            all_pdf_urls = list(dict.fromkeys(dom_pdf_urls + captured_pdf_urls))
+            if all_pdf_urls:
+                logger.info(
+                    f"[SCRAPER] {len(all_pdf_urls)} PDF(s): "
+                    f"{len(dom_pdf_urls)} from DOM, {len(captured_pdf_urls)} from network"
+                )
+                all_pdfs = await _download_captured(all_pdf_urls)
 
                 if all_pdfs:
                     # Also try to get HTML text from the page in case it has useful content
-                    await page.wait_for_timeout(2000)
                     text = await _extract_text(page)
-                    logger.info(f"[SCRAPER] Collected {len(all_pdfs)} PDFs + {len(text or '')} chars text from menu page")
                     return ScrapeResult(
                         text=text[:15000] if text and len(text) > 50 else None,
                         pdfs=all_pdfs,

@@ -16,6 +16,7 @@ import {
 } from "react-native";
 import { Ionicons } from "@expo/vector-icons";
 import { useLocalSearchParams } from "expo-router";
+import AsyncStorage from "@react-native-async-storage/async-storage";
 
 /* ------------------------------------------------------------------ */
 /*  Types                                                              */
@@ -121,6 +122,8 @@ const SAMPLE_SESSIONS: ChatSession[] = [
   },
 ];
 
+const HISTORY_STORAGE_KEY = "recipe_chat_sessions_v1";
+
 const QUICK_ACTIONS = [
   { label: "Vegan swap?", prompt: "How can I make this recipe vegan-friendly?" },
   { label: "Wine pairing", prompt: "What wine pairs well with this dish?" },
@@ -161,12 +164,36 @@ export default function RecipesTab() {
   const [loading, setLoading] = useState(false);
   const scrollRef = useRef<ScrollView>(null);
   const [hasAutoFetched, setHasAutoFetched] = useState(false);
+  const [hydrated, setHydrated] = useState(false);
 
   useEffect(() => {
     setSidebarOpen(isWide);
   }, [isWide]);
 
+  // Load persisted recipe history on mount
   useEffect(() => {
+    (async () => {
+      try {
+        const stored = await AsyncStorage.getItem(HISTORY_STORAGE_KEY);
+        if (stored) setSessions(JSON.parse(stored));
+      } catch (e) {
+        console.warn("Failed to load recipe history", e);
+      } finally {
+        setHydrated(true);
+      }
+    })();
+  }, []);
+
+  // Persist recipe history whenever it changes (after the initial load)
+  useEffect(() => {
+    if (!hydrated) return;
+    AsyncStorage.setItem(HISTORY_STORAGE_KEY, JSON.stringify(sessions)).catch((e) =>
+      console.warn("Failed to save recipe history", e)
+    );
+  }, [sessions, hydrated]);
+
+  useEffect(() => {
+    if (!hydrated) return;
     const dishName = params.dish as string | undefined;
     const restaurantName = params.restaurantName as string | undefined;
     const providerId = params.providerId as string | undefined;
@@ -175,7 +202,7 @@ export default function RecipesTab() {
       setHasAutoFetched(true);
       fetchIngredients(dishName, restaurantName, providerId);
     }
-  }, [params.dish, params.restaurantName]);
+  }, [params.dish, params.restaurantName, hydrated]);
 
   const fetchIngredients = async (
     dishName: string,
