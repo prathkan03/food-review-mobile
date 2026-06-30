@@ -17,6 +17,9 @@ public interface ProfileRepository extends JpaRepository<Profile, UUID> {
   @Query("SELECT r FROM Review r JOIN FETCH r.user JOIN FETCH r.restaurant WHERE r.user.id = :userId ORDER BY r.createdAt DESC")
   List<Review> findReviewsByUserId(@Param("userId") UUID userId);
 
-  @Query("SELECT p FROM Profile p WHERE p.username IS NOT NULL AND LOWER(p.username) LIKE LOWER(CONCAT(:prefix, '%')) ORDER BY p.username ASC")
-  List<Profile> findByUsernamePrefix(@Param("prefix") String prefix, Pageable pageable);
+  @Query("SELECT p FROM Profile p WHERE p.username IS NOT NULL AND " +
+         "(LOWER(p.username) LIKE LOWER(CONCAT('%', :q, '%')) OR " +
+         "LOWER(p.displayName) LIKE LOWER(CONCAT('%', :q, '%'))) " +
+         "ORDER BY p.username ASC")
+  List<Profile> searchProfiles(@Param("q") String q, Pageable pageable);
 }

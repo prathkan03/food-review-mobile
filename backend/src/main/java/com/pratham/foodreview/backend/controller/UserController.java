@@ -53,7 +53,7 @@ public class UserController {
         if (q == null || q.isBlank() || q.length() < 1) {
             return List.of();
         }
-        List<Profile> profiles = profileRepository.findByUsernamePrefix(
+        List<Profile> profiles = profileRepository.searchProfiles(
             q.trim(), PageRequest.of(0, 20)
         );
         return profiles.stream().map(p -> new ProfileResponse(

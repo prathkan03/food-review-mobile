@@ -28,23 +28,17 @@ interface ProfileData {
 
 interface Review {
   id: string;
-  userId: string;
-  userName: string;
-  userAvatar?: string;
-  restaurantId: string;
   restaurantName: string;
-  restaurantAddress: string;
   rating: number;
   text: string;
   photoUrls?: string[];
-  items?: string[];
   createdAt: string;
 }
 
 type TabName = "Reviews" | "Photos";
 
 export default function UserProfileScreen() {
-  const { id } = useLocalSearchParams<{ id: string }>();
+  const { userId } = useLocalSearchParams<{ userId: string }>();
   const [profile, setProfile] = useState<ProfileData | null>(null);
   const [reviews, setReviews] = useState<Review[]>([]);
   const [loading, setLoading] = useState(true);
@@ -53,38 +47,34 @@ export default function UserProfileScreen() {
 
   const fetchProfile = useCallback(async () => {
     try {
-      const res = await fetch(`${API_URL}/users/${id}`);
-      if (res.ok) {
-        setProfile(await res.json());
-      }
-    } catch (error) {
-      console.error("Error fetching user profile:", error);
+      const res = await fetch(`${API_URL}/users/${userId}`);
+      if (res.ok) setProfile(await res.json());
+    } catch (e) {
+      console.error("Error fetching profile:", e);
     }
-  }, [id]);
+  }, [userId]);
 
-  const fetchUserReviews = useCallback(async () => {
+  const fetchReviews = useCallback(async () => {
     try {
-      const res = await fetch(`${API_URL}/reviewfeed/user/${id}`);
-      if (res.ok) {
-        setReviews(await res.json());
-      }
-    } catch (error) {
-      console.error("Error fetching user reviews:", error);
+      const res = await fetch(`${API_URL}/reviewfeed/user/${userId}`);
+      if (res.ok) setReviews(await res.json());
+    } catch (e) {
+      console.error("Error fetching reviews:", e);
     }
-  }, [id]);
+  }, [userId]);
 
   useEffect(() => {
-    async function loadData() {
+    async function load() {
       setLoading(true);
-      await Promise.all([fetchProfile(), fetchUserReviews()]);
+      await Promise.all([fetchProfile(), fetchReviews()]);
       setLoading(false);
     }
-    loadData();
-  }, [fetchProfile, fetchUserReviews]);
+    load();
+  }, [fetchProfile, fetchReviews]);
 
   const onRefresh = async () => {
     setRefreshing(true);
-    await Promise.all([fetchProfile(), fetchUserReviews()]);
+    await Promise.all([fetchProfile(), fetchReviews()]);
     setRefreshing(false);
   };
 
@@ -96,7 +86,6 @@ export default function UserProfileScreen() {
     const diffHours = Math.floor(diffMs / 3600000);
     const diffDays = Math.floor(diffMs / 86400000);
     const diffWeeks = Math.floor(diffDays / 7);
-
     if (diffMins < 1) return "just now";
     if (diffMins < 60) return `${diffMins} min ago`;
     if (diffHours < 24) return `${diffHours} hour${diffHours > 1 ? "s" : ""} ago`;
@@ -107,7 +96,7 @@ export default function UserProfileScreen() {
     return date.toLocaleDateString();
   };
 
-  const formatCount = (n: number): string => {
+  const formatCount = (n: number) => {
     if (n >= 1000) return `${(n / 1000).toFixed(1).replace(/\.0$/, "")}k`;
     return n.toString();
   };
@@ -137,9 +126,7 @@ export default function UserProfileScreen() {
     >
       <View style={styles.reviewCardHeader}>
         <Text style={styles.reviewRestaurantName}>{item.restaurantName}</Text>
-        <Pressable hitSlop={8}>
-          <Ionicons name="ellipsis-horizontal" size={18} color="#999" />
-        </Pressable>
+        <Ionicons name="ellipsis-horizontal" size={18} color="#999" />
       </View>
 
       <View style={styles.ratingRow}>
@@ -157,15 +144,13 @@ export default function UserProfileScreen() {
       </View>
 
       {item.text ? (
-        <Text style={styles.reviewText} numberOfLines={3}>
-          {item.text}
-        </Text>
+        <Text style={styles.reviewText} numberOfLines={3}>{item.text}</Text>
       ) : null}
 
       {item.photoUrls && item.photoUrls.length > 0 ? (
         <View style={styles.photoRow}>
-          {item.photoUrls.slice(0, 3).map((url, index) => (
-            <Image key={index} source={{ uri: url }} style={styles.photoThumb} />
+          {item.photoUrls.slice(0, 3).map((url, i) => (
+            <Image key={i} source={{ uri: url }} style={styles.photoThumb} />
           ))}
         </View>
       ) : null}
@@ -183,7 +168,7 @@ export default function UserProfileScreen() {
     </Pressable>
   );
 
-  const renderProfileHeader = () => (
+  const renderHeader = () => (
     <View>
       <View style={styles.avatarSection}>
         <View style={styles.avatarRing}>
@@ -209,9 +194,7 @@ export default function UserProfileScreen() {
         ) : null}
       </View>
 
-      {profile?.bio ? (
-        <Text style={styles.bio}>{profile.bio}</Text>
-      ) : null}
+      {profile?.bio ? <Text style={styles.bio}>{profile.bio}</Text> : null}
 
       <View style={styles.statsCard}>
         <View style={styles.statItem}>
@@ -263,7 +246,7 @@ export default function UserProfileScreen() {
           data={reviews}
           keyExtractor={(item) => item.id}
           renderItem={renderReviewCard}
-          ListHeaderComponent={renderProfileHeader}
+          ListHeaderComponent={renderHeader}
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
           refreshControl={
@@ -281,7 +264,7 @@ export default function UserProfileScreen() {
           data={[]}
           keyExtractor={() => "placeholder"}
           renderItem={() => null}
-          ListHeaderComponent={renderProfileHeader}
+          ListHeaderComponent={renderHeader}
           ListEmptyComponent={
             <View style={styles.emptyContainer}>
               <Ionicons name="images-outline" size={48} color="#CCC" />
@@ -290,9 +273,6 @@ export default function UserProfileScreen() {
           }
           contentContainerStyle={styles.listContent}
           showsVerticalScrollIndicator={false}
-          refreshControl={
-            <RefreshControl refreshing={refreshing} onRefresh={onRefresh} tintColor="#FF6B35" />
-          }
         />
       )}
     </SafeAreaView>
@@ -300,20 +280,7 @@ export default function UserProfileScreen() {
 }
 
 const styles = StyleSheet.create({
-  container: {
-    flex: 1,
-    backgroundColor: "#F8F4F0",
-  },
-  loadingContainer: {
-    flex: 1,
-    justifyContent: "center",
-    alignItems: "center",
-  },
-  loadingText: {
-    marginTop: 12,
-    fontSize: 14,
-    color: "#999",
-  },
+  container: { flex: 1, backgroundColor: "#F8F4F0" },
   header: {
     flexDirection: "row",
     justifyContent: "space-between",
@@ -323,223 +290,73 @@ const styles = StyleSheet.create({
     paddingBottom: 8,
     backgroundColor: "#F8F4F0",
   },
-  headerTitle: {
-    fontSize: 17,
-    fontWeight: "700",
-    color: "#1A1A1A",
-  },
-  listContent: {
-    paddingBottom: 30,
-  },
-  avatarSection: {
-    alignItems: "center",
-    marginTop: 12,
-    backgroundColor: "#F8F4F0",
-  },
+  headerTitle: { fontSize: 17, fontWeight: "700", color: "#1A1A1A" },
+  loadingContainer: { flex: 1, justifyContent: "center", alignItems: "center" },
+  loadingText: { marginTop: 12, fontSize: 14, color: "#999" },
+  listContent: { paddingBottom: 30 },
+  avatarSection: { alignItems: "center", marginTop: 12, backgroundColor: "#F8F4F0" },
   avatarRing: {
-    width: 88,
-    height: 88,
-    borderRadius: 44,
-    borderWidth: 3,
-    borderColor: "#FF6B35",
-    alignItems: "center",
-    justifyContent: "center",
+    width: 88, height: 88, borderRadius: 44,
+    borderWidth: 3, borderColor: "#FF6B35",
+    alignItems: "center", justifyContent: "center",
   },
-  avatar: {
-    width: 78,
-    height: 78,
-    borderRadius: 39,
-  },
+  avatar: { width: 78, height: 78, borderRadius: 39 },
   avatarPlaceholder: {
-    width: 78,
-    height: 78,
-    borderRadius: 39,
-    backgroundColor: "#E8E0D8",
-    alignItems: "center",
-    justifyContent: "center",
+    width: 78, height: 78, borderRadius: 39,
+    backgroundColor: "#E8E0D8", alignItems: "center", justifyContent: "center",
   },
   followButton: {
     backgroundColor: "#FF6B35",
-    paddingHorizontal: 36,
-    paddingVertical: 9,
-    borderRadius: 24,
-    marginTop: 12,
+    paddingHorizontal: 36, paddingVertical: 9,
+    borderRadius: 24, marginTop: 12,
   },
-  followButtonText: {
-    color: "#FFF",
-    fontSize: 14,
-    fontWeight: "700",
-  },
-  nameSection: {
-    alignItems: "center",
-    marginTop: 12,
-    backgroundColor: "#F8F4F0",
-  },
-  displayName: {
-    fontSize: 20,
-    fontWeight: "700",
-    color: "#1A1A1A",
-  },
-  username: {
-    fontSize: 14,
-    color: "#999",
-    marginTop: 2,
-  },
+  followButtonText: { color: "#FFF", fontSize: 14, fontWeight: "700" },
+  nameSection: { alignItems: "center", marginTop: 12, backgroundColor: "#F8F4F0" },
+  displayName: { fontSize: 20, fontWeight: "700", color: "#1A1A1A" },
+  username: { fontSize: 14, color: "#999", marginTop: 2 },
   bio: {
-    fontSize: 13,
-    color: "#666",
-    lineHeight: 19,
-    textAlign: "center",
-    paddingHorizontal: 32,
-    marginTop: 8,
-    backgroundColor: "#F8F4F0",
+    fontSize: 13, color: "#666", lineHeight: 19,
+    textAlign: "center", paddingHorizontal: 32,
+    marginTop: 8, backgroundColor: "#F8F4F0",
   },
   statsCard: {
-    flexDirection: "row",
-    marginHorizontal: 16,
-    marginTop: 16,
-    paddingVertical: 14,
-    borderRadius: 14,
-    backgroundColor: "#FFF",
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 1,
+    flexDirection: "row", marginHorizontal: 16, marginTop: 16,
+    paddingVertical: 14, borderRadius: 14, backgroundColor: "#FFF",
+    shadowColor: "#000", shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
   },
-  statItem: {
-    flex: 1,
-    alignItems: "center",
-  },
-  statNumber: {
-    fontSize: 17,
-    fontWeight: "800",
-    color: "#1A1A1A",
-  },
-  statLabel: {
-    fontSize: 10,
-    fontWeight: "600",
-    color: "#999",
-    marginTop: 2,
-    letterSpacing: 0.5,
-  },
-  statDivider: {
-    width: 1,
-    height: 28,
-    backgroundColor: "#E8E8E8",
-    alignSelf: "center",
-  },
+  statItem: { flex: 1, alignItems: "center" },
+  statNumber: { fontSize: 17, fontWeight: "800", color: "#1A1A1A" },
+  statLabel: { fontSize: 10, fontWeight: "600", color: "#999", marginTop: 2, letterSpacing: 0.5 },
+  statDivider: { width: 1, height: 28, backgroundColor: "#E8E8E8", alignSelf: "center" },
   tabBar: {
-    flexDirection: "row",
-    marginTop: 18,
-    borderBottomWidth: 1,
-    borderBottomColor: "#E8E0D8",
+    flexDirection: "row", marginTop: 18,
+    borderBottomWidth: 1, borderBottomColor: "#E8E0D8",
     backgroundColor: "#F8F4F0",
   },
-  tab: {
-    flex: 1,
-    alignItems: "center",
-    paddingVertical: 12,
-  },
-  activeTab: {
-    borderBottomWidth: 2,
-    borderBottomColor: "#FF6B35",
-  },
-  tabText: {
-    fontSize: 14,
-    fontWeight: "500",
-    color: "#999",
-  },
-  activeTabText: {
-    color: "#FF6B35",
-    fontWeight: "600",
-  },
+  tab: { flex: 1, alignItems: "center", paddingVertical: 12 },
+  activeTab: { borderBottomWidth: 2, borderBottomColor: "#FF6B35" },
+  tabText: { fontSize: 14, fontWeight: "500", color: "#999" },
+  activeTabText: { color: "#FF6B35", fontWeight: "600" },
   reviewCard: {
-    marginHorizontal: 16,
-    marginTop: 10,
-    paddingHorizontal: 16,
-    paddingVertical: 14,
-    backgroundColor: "#FFF",
-    borderRadius: 14,
-    shadowColor: "#000",
-    shadowOffset: { width: 0, height: 1 },
-    shadowOpacity: 0.05,
-    shadowRadius: 4,
-    elevation: 1,
+    marginHorizontal: 16, marginTop: 10,
+    paddingHorizontal: 16, paddingVertical: 14,
+    backgroundColor: "#FFF", borderRadius: 14,
+    shadowColor: "#000", shadowOffset: { width: 0, height: 1 },
+    shadowOpacity: 0.05, shadowRadius: 4, elevation: 1,
   },
-  reviewCardHeader: {
-    flexDirection: "row",
-    justifyContent: "space-between",
-    alignItems: "center",
-  },
-  reviewRestaurantName: {
-    fontSize: 15,
-    fontWeight: "700",
-    color: "#1A1A1A",
-    flex: 1,
-    marginRight: 8,
-  },
-  ratingRow: {
-    flexDirection: "row",
-    alignItems: "center",
-    marginTop: 4,
-  },
-  ratingScore: {
-    fontSize: 13,
-    fontWeight: "600",
-    color: "#1A1A1A",
-    marginLeft: 6,
-  },
-  dotSeparator: {
-    fontSize: 13,
-    color: "#999",
-  },
-  reviewTime: {
-    fontSize: 13,
-    color: "#999",
-  },
-  reviewText: {
-    fontSize: 14,
-    color: "#444",
-    lineHeight: 20,
-    marginTop: 10,
-  },
-  photoRow: {
-    flexDirection: "row",
-    gap: 8,
-    marginTop: 12,
-  },
-  photoThumb: {
-    width: 90,
-    height: 90,
-    borderRadius: 10,
-  },
-  reviewActions: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 20,
-    marginTop: 12,
-  },
-  actionItem: {
-    flexDirection: "row",
-    alignItems: "center",
-    gap: 5,
-  },
-  actionText: {
-    fontSize: 11,
-    fontWeight: "600",
-    color: "#999",
-    letterSpacing: 0.3,
-  },
-  emptyContainer: {
-    alignItems: "center",
-    justifyContent: "center",
-    paddingVertical: 60,
-  },
-  emptyText: {
-    fontSize: 16,
-    color: "#666",
-    marginTop: 12,
-    fontWeight: "500",
-  },
+  reviewCardHeader: { flexDirection: "row", justifyContent: "space-between", alignItems: "center" },
+  reviewRestaurantName: { fontSize: 15, fontWeight: "700", color: "#1A1A1A", flex: 1, marginRight: 8 },
+  ratingRow: { flexDirection: "row", alignItems: "center", marginTop: 4 },
+  ratingScore: { fontSize: 13, fontWeight: "600", color: "#1A1A1A", marginLeft: 6 },
+  dotSeparator: { fontSize: 13, color: "#999" },
+  reviewTime: { fontSize: 13, color: "#999" },
+  reviewText: { fontSize: 14, color: "#444", lineHeight: 20, marginTop: 10 },
+  photoRow: { flexDirection: "row", gap: 8, marginTop: 12 },
+  photoThumb: { width: 90, height: 90, borderRadius: 10 },
+  reviewActions: { flexDirection: "row", alignItems: "center", gap: 20, marginTop: 12 },
+  actionItem: { flexDirection: "row", alignItems: "center", gap: 5 },
+  actionText: { fontSize: 11, fontWeight: "600", color: "#999", letterSpacing: 0.3 },
+  emptyContainer: { alignItems: "center", justifyContent: "center", paddingVertical: 60 },
+  emptyText: { fontSize: 16, color: "#666", marginTop: 12, fontWeight: "500" },
 });

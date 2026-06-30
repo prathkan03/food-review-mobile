@@ -3,6 +3,7 @@ from dataclasses import dataclass, field
 from urllib.parse import urlparse
 
 import httpx
+import asyncio
 from playwright.async_api import async_playwright, TimeoutError as PlaywrightTimeout
 
 from app.config import settings
@@ -144,6 +145,9 @@ async def _find_best_menu_link(page, website_url: str) -> tuple[list[str], str |
 
     return pdf_urls, best_html
 
+async def _download_captured(urls: list[str]) -> list[PdfItem]:
+    results = await asyncio.gather(*[_download_pdf(u) for u in urls])
+    return [PdfItem(u, d) for u, d in zip(urls, results) if d]
 
 async def scrape_menu_page(website_url: str) -> ScrapeResult:
     """Scrape a restaurant website for menu content.
@@ -155,6 +159,21 @@ async def scrape_menu_page(website_url: str) -> ScrapeResult:
         browser = await p.chromium.launch(headless=True)
         try:
             page = await browser.new_page()
+            captured_pdf_urls: list[str] = []
+            seen_pdf: set[str] = set()
+            def _on_response(response):
+                try:
+                    ctype = response.headers.get("content-type", "").lower()
+                    url = response.url
+                    is_pdf = "application/pdf" in ctype or url.lower().split("?")[0].endswith(".pdf")
+                    if is_pdf and url not in seen_pdf:
+                        seen_pdf.add(url)
+                        captured_pdf_urls.append(url)
+                        logger.info(f"[SCRAPER] Network-captured PDF: {url} (content-type: {ctype})")
+                except Exception as e:
+                    logger.debug(f"[SCRAPER] response handler error: {e}")
+
+            page.on("response", _on_response)
             logger.info(f"[SCRAPER] Navigating to: {website_url}")
 
             url_lower = website_url.lower()
